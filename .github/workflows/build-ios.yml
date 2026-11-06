@@ -17,6 +17,7 @@ jobs:
 
       - name: Generate Xcode Project & Build IPA
         run: |
+          set -e
           if [ -d "PickleVision" ] && [ -f "PickleVision/project.yml" ]; then
             cd PickleVision
           fi
@@ -28,6 +29,7 @@ jobs:
           xcodebuild -project PickleVision.xcodeproj -list
           
           echo "=== 3. Compiling with xcodebuild (iOS Device target) ==="
+          set +e
           xcodebuild \
             -project PickleVision.xcodeproj \
             -target PickleVision \
@@ -37,8 +39,18 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            build
-            
+            build 2>&1 | tee xcodebuild.log
+          BUILD_EXIT_CODE=$?
+          
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo "### ❌ Xcodebuild Compilation Failed (Code $BUILD_EXIT_CODE)" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 60 xcodebuild.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit $BUILD_EXIT_CODE
+          fi
+          set -e
+          
           echo "=== 4. Packaging into PickleVision.ipa ==="
           mkdir -p build/Payload
           APP_PATH=$(find build/DerivedData -name "PickleVision.app" -type d | head -n 1)
@@ -52,7 +64,16 @@ jobs:
           zip -r PickleVision.ipa Payload
           echo "IPA packaging completed successfully."
 
+      - name: Upload Build Log (Always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: "**/xcodebuild.log"
+          if-no-files-found: ignore
+
       - name: Upload IPA Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: PickleVision-iOS-IPA
