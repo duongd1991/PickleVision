@@ -1189,6 +1189,141 @@ def run_all_tests():
     res.assert_equal(engine_fresh.state, "IN_PROGRESS")
     print("   [PASS] testTelemetryStream_ContainsConsistentMetadata passed\n")
 
+    # ==========================================================================
+    # 7. COURT GEOMETRY BOUNDARY CONSTRAINT TESTS (v1.0.3)
+    # ==========================================================================
+    print("Test Suite 'CourtGeometryBoundaryConstraintTests' started.")
+    
+    def geom_compute_t(p, a, b):
+        dx = b[0] - a[0]
+        dy = b[1] - a[1]
+        lsq = dx * dx + dy * dy
+        if lsq < 1e-6: return 0.5
+        t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lsq
+        return min(max(t, 0.01), 0.99)
+        
+    def geom_project(p, a, b, t_min, t_max):
+        dx = b[0] - a[0]
+        dy = b[1] - a[1]
+        lsq = dx * dx + dy * dy
+        if lsq < 1e-6: return a
+        t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lsq
+        ct = min(max(t, t_min), t_max)
+        return (a[0] + ct * dx, a[1] + ct * dy)
+        
+    def geom_update(corners, idx, touch):
+        c = list(corners)
+        clamped = (min(max(touch[0], 0.0), 1.0), min(max(touch[1], 0.0), 1.0))
+        if idx == 0:
+            t4 = geom_compute_t(c[4], c[0], c[3])
+            t8 = geom_compute_t(c[8], c[0], c[3])
+            t7 = geom_compute_t(c[7], c[0], c[3])
+            c[0] = clamped
+            dx, dy = c[3][0] - c[0][0], c[3][1] - c[0][1]
+            c[4] = (c[0][0] + t4 * dx, c[0][1] + t4 * dy)
+            c[8] = (c[0][0] + t8 * dx, c[0][1] + t8 * dy)
+            c[7] = (c[0][0] + t7 * dx, c[0][1] + t7 * dy)
+        elif idx == 3:
+            t4 = geom_compute_t(c[4], c[0], c[3])
+            t8 = geom_compute_t(c[8], c[0], c[3])
+            t7 = geom_compute_t(c[7], c[0], c[3])
+            c[3] = clamped
+            dx, dy = c[3][0] - c[0][0], c[3][1] - c[0][1]
+            c[4] = (c[0][0] + t4 * dx, c[0][1] + t4 * dy)
+            c[8] = (c[0][0] + t8 * dx, c[0][1] + t8 * dy)
+            c[7] = (c[0][0] + t7 * dx, c[0][1] + t7 * dy)
+        elif idx == 1:
+            t5 = geom_compute_t(c[5], c[1], c[2])
+            t9 = geom_compute_t(c[9], c[1], c[2])
+            t6 = geom_compute_t(c[6], c[1], c[2])
+            c[1] = clamped
+            dx, dy = c[2][0] - c[1][0], c[2][1] - c[1][1]
+            c[5] = (c[1][0] + t5 * dx, c[1][1] + t5 * dy)
+            c[9] = (c[1][0] + t9 * dx, c[1][1] + t9 * dy)
+            c[6] = (c[1][0] + t6 * dx, c[1][1] + t6 * dy)
+        elif idx == 2:
+            t5 = geom_compute_t(c[5], c[1], c[2])
+            t9 = geom_compute_t(c[9], c[1], c[2])
+            t6 = geom_compute_t(c[6], c[1], c[2])
+            c[2] = clamped
+            dx, dy = c[2][0] - c[1][0], c[2][1] - c[1][1]
+            c[5] = (c[1][0] + t5 * dx, c[1][1] + t5 * dy)
+            c[9] = (c[1][0] + t9 * dx, c[1][1] + t9 * dy)
+            c[6] = (c[1][0] + t6 * dx, c[1][1] + t6 * dy)
+        elif idx == 4:
+            t8 = geom_compute_t(c[8], c[0], c[3])
+            c[4] = geom_project(clamped, c[0], c[3], 0.05, max(0.06, t8 - 0.03))
+        elif idx == 8:
+            t4 = geom_compute_t(c[4], c[0], c[3])
+            t7 = geom_compute_t(c[7], c[0], c[3])
+            c[8] = geom_project(clamped, c[0], c[3], min(t4 + 0.03, 0.94), max(0.06, t7 - 0.03))
+        elif idx == 7:
+            t8 = geom_compute_t(c[8], c[0], c[3])
+            c[7] = geom_project(clamped, c[0], c[3], min(t8 + 0.03, 0.94), 0.95)
+        elif idx == 5:
+            t9 = geom_compute_t(c[9], c[1], c[2])
+            c[5] = geom_project(clamped, c[1], c[2], 0.05, max(0.06, t9 - 0.03))
+        elif idx == 9:
+            t5 = geom_compute_t(c[5], c[1], c[2])
+            t6 = geom_compute_t(c[6], c[1], c[2])
+            c[9] = geom_project(clamped, c[1], c[2], min(t5 + 0.03, 0.94), max(0.06, t6 - 0.03))
+        elif idx == 6:
+            t9 = geom_compute_t(c[9], c[1], c[2])
+            c[6] = geom_project(clamped, c[1], c[2], min(t9 + 0.03, 0.94), 0.95)
+        return c
+
+    # Khởi tạo 10 điểm mốc sân chuẩn v1.0.3
+    init_10 = [
+        (0.12, 0.88), (0.88, 0.88), (0.68, 0.22), (0.32, 0.22),
+        (0.1882, 0.6550), (0.8118, 0.6550), (0.7482, 0.4450), (0.2518, 0.4450),
+        (0.2200, 0.5500), (0.7800, 0.5500)
+    ]
+
+    # 7.1 Kéo chốt bếp gần trái (idx 4) ra xa (ví dụ x=0.50, y=0.50) -> Bắt buộc chiếu lên đoạn P0->P3
+    updated_4 = geom_update(init_10, 4, (0.50, 0.50))
+    # Khoảng cách từ điểm mới tới đoạn thẳng P0->P3 phải = 0
+    t_val = geom_compute_t(updated_4[4], updated_4[0], updated_4[3])
+    dx = updated_4[3][0] - updated_4[0][0]
+    dy = updated_4[3][1] - updated_4[0][1]
+    expected_x = updated_4[0][0] + t_val * dx
+    expected_y = updated_4[0][1] + t_val * dy
+    res.assert_true(abs(updated_4[4][0] - expected_x) < 1e-5, "P4 x must lie on P0->P3")
+    res.assert_true(abs(updated_4[4][1] - expected_y) < 1e-5, "P4 y must lie on P0->P3")
+    print("   [PASS] testKitchenPoint_ProjectsOntoLeftSideline_WhenDraggedFreely passed")
+
+    # 7.2 Thứ tự hình học trên biên trái P0 <= P4 <= P8 <= P7 <= P3
+    t4 = geom_compute_t(updated_4[4], updated_4[0], updated_4[3])
+    t8 = geom_compute_t(updated_4[8], updated_4[0], updated_4[3])
+    t7 = geom_compute_t(updated_4[7], updated_4[0], updated_4[3])
+    res.assert_true(t4 < t8, "P4 must precede P8 along left sideline")
+    res.assert_true(t8 < t7, "P8 must precede P7 along left sideline")
+    print("   [PASS] testNetPoint_MaintainsOrderBetweenNearAndFarKitchen_OnSidelines passed")
+
+    # 7.3 Kéo góc đáy sân P0 -> Các điểm P4, P8, P7 tự động bám theo đường biên mới
+    updated_corner = geom_update(init_10, 0, (0.05, 0.95))
+    res.assert_equal(updated_corner[0], (0.05, 0.95), "Corner P0 updated")
+    t4_new = geom_compute_t(updated_corner[4], updated_corner[0], updated_corner[3])
+    t4_old = geom_compute_t(init_10[4], init_10[0], init_10[3])
+    res.assert_true(abs(t4_new - t4_old) < 1e-3, "P4 preserves relative ratio on sideline")
+    print("   [PASS] testDraggingCorner_PreservesRelativePositionsOfKitchenAndNetPoints passed")
+
+    # 7.4 Kéo chốt trên biên phải P5 -> Bắt buộc chiếu lên đoạn P1->P2
+    updated_5 = geom_update(init_10, 5, (0.20, 0.70))
+    t5_val = geom_compute_t(updated_5[5], updated_5[1], updated_5[2])
+    dx_r = updated_5[2][0] - updated_5[1][0]
+    dy_r = updated_5[2][1] - updated_5[1][1]
+    res.assert_true(abs(updated_5[5][0] - (updated_5[1][0] + t5_val * dx_r)) < 1e-5, "P5 must lie on P1->P2")
+    res.assert_true(abs(updated_5[5][1] - (updated_5[1][1] + t5_val * dy_r)) < 1e-5, "P5 must lie on P1->P2")
+    print("   [PASS] testRightSidelineConstraints_ProjectsPointsOntoRightBoundary passed")
+
+    # 7.5 Kéo góc đáy phải P1 -> P5, P9, P6 tự động bám theo đường biên phải mới
+    updated_p1 = geom_update(init_10, 1, (0.92, 0.95))
+    res.assert_equal(updated_p1[1], (0.92, 0.95), "Corner P1 updated")
+    t5_new = geom_compute_t(updated_p1[5], updated_p1[1], updated_p1[2])
+    t5_old = geom_compute_t(init_10[5], init_10[1], init_10[2])
+    res.assert_true(abs(t5_new - t5_old) < 1e-3, "P5 preserves relative ratio on right sideline")
+    print("   [PASS] testBoundaryProjectionClamping_PreventsPointsLeavingCourtPerimeter passed\n")
+
     # --------------------------------------------------------------------------
     # SUMMARY
     # --------------------------------------------------------------------------

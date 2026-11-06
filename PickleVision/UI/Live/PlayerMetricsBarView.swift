@@ -14,8 +14,10 @@ public struct PlayerMetricsBarView: View {
     // MARK: - Properties
     
     public let metrics: [PlayerRallyMetric]
+    public var isRecording: Bool = false
     @Binding public var isLivePlayback: Bool
     @Binding public var scrubberProgress: Double // 0.0 -> 1.0
+    public var onToggleRecording: (() -> Void)? = nil
     public var onScrubberChanged: ((Double) -> Void)? = nil
     public var onVARTapped: (() -> Void)? = nil
     public var onSummaryTapped: (() -> Void)? = nil
@@ -24,8 +26,10 @@ public struct PlayerMetricsBarView: View {
     
     public init(
         metrics: [PlayerRallyMetric],
+        isRecording: Bool = false,
         isLivePlayback: Binding<Bool> = .constant(true),
         scrubberProgress: Binding<Double> = .constant(1.0),
+        onToggleRecording: (() -> Void)? = nil,
         onScrubberChanged: ((Double) -> Void)? = nil,
         onVARTapped: (() -> Void)? = nil,
         onSummaryTapped: (() -> Void)? = nil,
@@ -33,8 +37,10 @@ public struct PlayerMetricsBarView: View {
         onEditPlayersTapped: (() -> Void)? = nil
     ) {
         self.metrics = metrics
+        self.isRecording = isRecording
         self._isLivePlayback = isLivePlayback
         self._scrubberProgress = scrubberProgress
+        self.onToggleRecording = onToggleRecording
         self.onScrubberChanged = onScrubberChanged
         self.onVARTapped = onVARTapped
         self.onSummaryTapped = onSummaryTapped
@@ -48,12 +54,12 @@ public struct PlayerMetricsBarView: View {
         if !metrics.isEmpty {
             return metrics
         }
-        // Bộ hiển thị mặc định 4 cầu thủ
+        // Bộ hiển thị mặc định 4 cầu thủ A1, A2, B1, B2
         return [
             PlayerRallyMetric(
                 id: UUID(),
                 playerIndex: 0,
-                name: "Tú",
+                name: "A1",
                 team: .nearTeam,
                 courtPosition: CGPoint(x: 1.5, y: 1.0),
                 rallyDistanceMeters: 18.5,
@@ -64,7 +70,7 @@ public struct PlayerMetricsBarView: View {
             PlayerRallyMetric(
                 id: UUID(),
                 playerIndex: 1,
-                name: "Cường",
+                name: "A2",
                 team: .nearTeam,
                 courtPosition: CGPoint(x: 4.5, y: 1.0),
                 rallyDistanceMeters: 15.2,
@@ -75,7 +81,7 @@ public struct PlayerMetricsBarView: View {
             PlayerRallyMetric(
                 id: UUID(),
                 playerIndex: 2,
-                name: "Nam",
+                name: "B1",
                 team: .farTeam,
                 courtPosition: CGPoint(x: 1.5, y: 12.4),
                 rallyDistanceMeters: 22.1,
@@ -86,7 +92,7 @@ public struct PlayerMetricsBarView: View {
             PlayerRallyMetric(
                 id: UUID(),
                 playerIndex: 3,
-                name: "Thành",
+                name: "B2",
                 team: .farTeam,
                 courtPosition: CGPoint(x: 4.5, y: 12.4),
                 rallyDistanceMeters: 12.8,
@@ -103,17 +109,31 @@ public struct PlayerMetricsBarView: View {
         VStack(spacing: 8) {
             
             // 1. Thanh điều khiển Scrubber và Nút Thao Tác Nhanh
-            HStack(spacing: 12) {
-                // Nút Play / Pause
+            HStack(spacing: 10) {
+                
+                // Nút QUAY VIDEO chuẩn iPhone Camera Shutter
                 Button(action: {
-                    onPlayPauseToggled?()
+                    onToggleRecording?()
                 }) {
-                    Image(systemName: isLivePlayback ? "pause.fill" : "play.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(width: 28, height: 28)
-                        .background(Color.white.opacity(0.12))
-                        .clipShape(Circle())
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white, lineWidth: 2.5)
+                            .frame(width: 32, height: 32)
+                        
+                        if isRecording {
+                            // Khi đang quay: icon vuông đỏ bo góc chuẩn camera iPhone
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.red)
+                                .frame(width: 14, height: 14)
+                                .shadow(color: .red.opacity(0.8), radius: 4)
+                        } else {
+                            // Khi chưa quay: icon tròn đỏ chuẩn camera iPhone (chờ quay)
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 18, height: 18)
+                                .shadow(color: .red.opacity(0.6), radius: 4)
+                        }
+                    }
                 }
                 .buttonStyle(.plain)
                 
@@ -123,18 +143,40 @@ public struct PlayerMetricsBarView: View {
                     scrubberProgress = 1.0
                     onScrubberChanged?(1.0)
                 }) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Circle()
-                            .fill(isLivePlayback ? Color.red : Color.gray)
+                            .fill(isRecording ? Color.red : Color.gray.opacity(0.6))
                             .frame(width: 6, height: 6)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.red.opacity(0.6), lineWidth: 1.5)
+                                    .scaleEffect(isRecording ? 1.8 : 1.0)
+                                    .opacity(isRecording ? 0.0 : 0.6)
+                            )
                         Text("LIVE")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundColor(isLivePlayback ? .white : .white.opacity(0.5))
+                            .font(.system(size: 9.5, weight: .black))
+                            .foregroundColor(isRecording ? .white : Color.gray.opacity(0.7))
                     }
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 4)
-                    .background(isLivePlayback ? Color.red.opacity(0.3) : Color.white.opacity(0.08))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4.5)
+                    .background(isRecording ? Color.red.opacity(0.35) : Color.white.opacity(0.06))
                     .clipShape(Capsule())
+                    .overlay(
+                        Capsule().stroke(isRecording ? Color.red.opacity(0.8) : Color.white.opacity(0.12), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                
+                // Nút Play / Pause
+                Button(action: {
+                    onPlayPauseToggled?()
+                }) {
+                    Image(systemName: isLivePlayback ? "pause.fill" : "play.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 26, height: 26)
+                        .background(Color.white.opacity(0.12))
+                        .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
                 

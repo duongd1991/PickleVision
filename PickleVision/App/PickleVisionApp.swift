@@ -17,8 +17,20 @@ public enum AppFlowScreen {
     case liveMatch
 }
 
+/// Khóa cứng hướng màn hình là NẰM NGANG (Landscape Only) dù có cầm máy dọc
+final class PickleVisionAppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        return .landscape
+    }
+}
+
 @main
 struct PickleVisionApp: App {
+    
+    @UIApplicationDelegateAdaptor(PickleVisionAppDelegate.self) var appDelegate
     
     // MARK: - State Objects
     
@@ -32,7 +44,7 @@ struct PickleVisionApp: App {
     
     @State private var currentScreen: AppFlowScreen = .home
     @State private var currentFrameBuffer: CVPixelBuffer?
-    @State private var playerNames: [String] = ["Tú", "Cường", "Nam", "Thành"]
+    @State private var playerNames: [String] = ["A1", "A2", "B1", "B2"]
     @State private var initialServerIndex: Int = 0
     @State private var calibratedCorners: [CGPoint] = CourtCalibrationSetupView.default10Points
     

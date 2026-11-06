@@ -135,8 +135,12 @@ public struct LiveMatchContainerView: View {
                         if showPlayerMetrics {
                             PlayerMetricsBarView(
                                 metrics: cvCoordinator.currentTelemetry.players,
+                                isRecording: isMatchRecording,
                                 isLivePlayback: $isLivePlayback,
                                 scrubberProgress: $scrubberProgress,
+                                onToggleRecording: {
+                                    toggleRecording()
+                                },
                                 onScrubberChanged: { progress in
                                     // Xử lý tua lại video khi người dùng kéo scrubber
                                 },
@@ -294,7 +298,7 @@ public struct LiveMatchContainerView: View {
         .sheet(isPresented: $showPlayerEditSheet) {
             PlayerEditSheetView(
                 initialNames: cvCoordinator.trackedPlayers.map { $0.name }.isEmpty ?
-                    ["Tú", "Cường", "Nam", "Thành"] :
+                    ["A1", "A2", "B1", "B2"] :
                     cvCoordinator.trackedPlayers.map { $0.name },
                 onSave: { newNames in
                     cvCoordinator.setAllPlayerNames(newNames)
@@ -303,6 +307,20 @@ public struct LiveMatchContainerView: View {
                     showPlayerEditSheet = false
                 }
             )
+        }
+    }
+    
+    // MARK: - Actions & Event Triggers
+    
+    private func toggleRecording() {
+        if !isMatchRecording {
+            withAnimation(.spring()) {
+                isMatchRecording = true
+                cvCoordinator.isRecordingActive = true
+                rallyEngine.resetMatch()
+            }
+        } else {
+            showEndMatchConfirmAlert = true
         }
     }
     
@@ -624,10 +642,7 @@ private struct CalibrationGuideOverlay: View {
                             }
                             
                             if let idx = activeDraggingIndex, idx < corners.count {
-                                corners[idx] = CGPoint(
-                                    x: min(max(touchNorm.x, 0.0), 1.0),
-                                    y: min(max(touchNorm.y, 0.0), 1.0)
-                                )
+                                CourtGeometryHelper.updateCorner(corners: &corners, index: idx, rawTouch: touchNorm)
                             }
                         }
                         .onEnded { _ in
@@ -672,9 +687,11 @@ private struct CalibrationGuideOverlay: View {
                         .onChanged { value in
                             activeDraggingIndex = i
                             guard viewSize.width > 0 && viewSize.height > 0 else { return }
-                            let newX = min(max(value.location.x / viewSize.width, 0.0), 1.0)
-                            let newY = min(max(value.location.y / viewSize.height, 0.0), 1.0)
-                            corners[i] = CGPoint(x: newX, y: newY)
+                            let touchNorm = CGPoint(
+                                x: value.location.x / viewSize.width,
+                                y: value.location.y / viewSize.height
+                            )
+                            CourtGeometryHelper.updateCorner(corners: &corners, index: i, rawTouch: touchNorm)
                         }
                         .onEnded { _ in
                             activeDraggingIndex = nil

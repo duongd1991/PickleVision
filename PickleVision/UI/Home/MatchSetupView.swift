@@ -28,7 +28,7 @@ public struct MatchSetupView: View {
     @State private var isDoubles: Bool = true
     
     public init(
-        initialNames: [String] = ["Tú", "Cường", "Nam", "Thành"],
+        initialNames: [String] = ["A1", "A2", "B1", "B2"],
         initialServerIndex: Int = 0,
         onBack: @escaping () -> Void,
         onNext: @escaping (_ names: [String], _ serverIndex: Int) -> Void
@@ -128,23 +128,23 @@ public struct MatchSetupView: View {
                                     Circle()
                                         .fill(Color(red: 0.22, green: 0.52, blue: 0.98))
                                         .frame(width: 8, height: 8)
-                                    Text("ĐỘI GẦN (SÂN DƯỚI)")
+                                    Text("ĐỘI A (GẦN SÂN DƯỚI)")
                                         .font(.system(size: 11, weight: .black, design: .monospaced))
                                         .foregroundColor(Color(red: 0.4, green: 0.7, blue: 1.0))
                                 }
                                 
-                                // Cầu thủ 1
+                                // Cầu thủ A1
                                 PlayerInputCard(
-                                    title: "Cầu thủ 1 (Trái):",
+                                    title: "Cầu thủ A1 (Trái):",
                                     color: Color(red: 0.22, green: 0.52, blue: 0.98),
                                     text: $p0,
                                     isServer: selectedServer == 0,
                                     onSelectServer: { selectedServer = 0 }
                                 )
                                 
-                                // Cầu thủ 2
+                                // Cầu thủ A2
                                 PlayerInputCard(
-                                    title: "Cầu thủ 2 (Phải):",
+                                    title: "Cầu thủ A2 (Phải):",
                                     color: Color(red: 0.58, green: 0.38, blue: 0.98),
                                     text: $p1,
                                     isServer: selectedServer == 1,
@@ -165,23 +165,23 @@ public struct MatchSetupView: View {
                                     Circle()
                                         .fill(Color(red: 0.98, green: 0.46, blue: 0.12))
                                         .frame(width: 8, height: 8)
-                                    Text("ĐỘI XA (SÂN TRÊN)")
+                                    Text("ĐỘI B (XA SÂN TRÊN)")
                                         .font(.system(size: 11, weight: .black, design: .monospaced))
                                         .foregroundColor(Color(red: 1.0, green: 0.6, blue: 0.3))
                                 }
                                 
-                                // Cầu thủ 3
+                                // Cầu thủ B1
                                 PlayerInputCard(
-                                    title: "Cầu thủ 3 (Trái):",
+                                    title: "Cầu thủ B1 (Trái):",
                                     color: Color(red: 0.98, green: 0.46, blue: 0.12),
                                     text: $p2,
                                     isServer: selectedServer == 2,
                                     onSelectServer: { selectedServer = 2 }
                                 )
                                 
-                                // Cầu thủ 4
+                                // Cầu thủ B2
                                 PlayerInputCard(
-                                    title: "Cầu thủ 4 (Phải):",
+                                    title: "Cầu thủ B2 (Phải):",
                                     color: Color(red: 0.94, green: 0.28, blue: 0.28),
                                     text: $p3,
                                     isServer: selectedServer == 3,
@@ -241,32 +241,32 @@ public struct MatchSetupView: View {
     // MARK: - Helpers
     
     private func loadInitialData() {
-        p0 = initialNames.indices.contains(0) ? initialNames[0] : "Tú"
-        p1 = initialNames.indices.contains(1) ? initialNames[1] : "Cường"
-        p2 = initialNames.indices.contains(2) ? initialNames[2] : "Nam"
-        p3 = initialNames.indices.contains(3) ? initialNames[3] : "Thành"
+        p0 = initialNames.indices.contains(0) ? initialNames[0] : "A1"
+        p1 = initialNames.indices.contains(1) ? initialNames[1] : "A2"
+        p2 = initialNames.indices.contains(2) ? initialNames[2] : "B1"
+        p3 = initialNames.indices.contains(3) ? initialNames[3] : "B2"
         selectedServer = initialServerIndex
     }
     
     private func nameForIndex(_ index: Int) -> String {
         switch index {
-        case 0: return p0.isEmpty ? "Tú" : p0
-        case 1: return p1.isEmpty ? "Cường" : p1
-        case 2: return p2.isEmpty ? "Nam" : p2
-        case 3: return p3.isEmpty ? "Thành" : p3
+        case 0: return p0.isEmpty ? "A1" : p0
+        case 1: return p1.isEmpty ? "A2" : p1
+        case 2: return p2.isEmpty ? "B1" : p2
+        case 3: return p3.isEmpty ? "B2" : p3
         default: return "Cầu thủ \(index + 1)"
         }
     }
     
     private func teamNameForIndex(_ index: Int) -> String {
-        return (index == 0 || index == 1) ? "Đội Gần" : "Đội Xa"
+        return (index == 0 || index == 1) ? "Đội A" : "Đội B"
     }
     
     private func handleNext() {
-        let trimmed0 = p0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Tú" : p0
-        let trimmed1 = p1.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Cường" : p1
-        let trimmed2 = p2.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Nam" : p2
-        let trimmed3 = p3.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Thành" : p3
+        let trimmed0 = p0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "A1" : p0
+        let trimmed1 = p1.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "A2" : p1
+        let trimmed2 = p2.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "B1" : p2
+        let trimmed3 = p3.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "B2" : p3
         
         onNext([trimmed0, trimmed1, trimmed2, trimmed3], selectedServer)
     }

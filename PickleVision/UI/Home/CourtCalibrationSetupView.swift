@@ -15,16 +15,16 @@ public struct CourtCalibrationSetupView: View {
     
     // MARK: - Default 10 Landmark Points (Normalized [0...1])
     public static let default10Points: [CGPoint] = [
-        CGPoint(x: 0.12, y: 0.88),  // 0: Đáy Gần Trái
-        CGPoint(x: 0.88, y: 0.88),  // 1: Đáy Gần Phải
-        CGPoint(x: 0.68, y: 0.22),  // 2: Đáy Xa Phải
-        CGPoint(x: 0.32, y: 0.22),  // 3: Đáy Xa Trái
-        CGPoint(x: 0.23, y: 0.58),  // 4: Bếp Gần Trái
-        CGPoint(x: 0.77, y: 0.58),  // 5: Bếp Gần Phải
-        CGPoint(x: 0.71, y: 0.36),  // 6: Bếp Xa Phải
-        CGPoint(x: 0.29, y: 0.36),  // 7: Bếp Xa Trái
-        CGPoint(x: 0.26, y: 0.46),  // 8: Chân Lưới Trái
-        CGPoint(x: 0.74, y: 0.46)   // 9: Chân Lưới Phải
+        CGPoint(x: 0.12, y: 0.88),      // 0: Đáy Gần Trái (P0)
+        CGPoint(x: 0.88, y: 0.88),      // 1: Đáy Gần Phải (P1)
+        CGPoint(x: 0.68, y: 0.22),      // 2: Đáy Xa Phải (P2)
+        CGPoint(x: 0.32, y: 0.22),      // 3: Đáy Xa Trái (P3)
+        CGPoint(x: 0.1882, y: 0.6550),  // 4: Bếp Gần Trái (P4)
+        CGPoint(x: 0.8118, y: 0.6550),  // 5: Bếp Gần Phải (P5)
+        CGPoint(x: 0.7482, y: 0.4450),  // 6: Bếp Xa Phải (P6)
+        CGPoint(x: 0.2518, y: 0.4450),  // 7: Bếp Xa Trái (P7)
+        CGPoint(x: 0.2200, y: 0.5500),  // 8: Chân Lưới Trái (P8)
+        CGPoint(x: 0.7800, y: 0.5500)   // 9: Chân Lưới Phải (P9)
     ]
     
     // MARK: - Properties & Callbacks
@@ -295,10 +295,7 @@ private struct CalibrationROIOverlay: View {
                             }
                             
                             if let idx = activeDraggingIndex, idx < corners.count {
-                                corners[idx] = CGPoint(
-                                    x: min(max(touchNorm.x, 0.0), 1.0),
-                                    y: min(max(touchNorm.y, 0.0), 1.0)
-                                )
+                                CourtGeometryHelper.updateCorner(corners: &corners, index: idx, rawTouch: touchNorm)
                             }
                         }
                         .onEnded { _ in
@@ -345,9 +342,11 @@ private struct CalibrationROIOverlay: View {
                         .onChanged { value in
                             activeDraggingIndex = i
                             guard viewSize.width > 0 && viewSize.height > 0 else { return }
-                            let newX = min(max(value.location.x / viewSize.width, 0.0), 1.0)
-                            let newY = min(max(value.location.y / viewSize.height, 0.0), 1.0)
-                            corners[i] = CGPoint(x: newX, y: newY)
+                            let touchNorm = CGPoint(
+                                x: value.location.x / viewSize.width,
+                                y: value.location.y / viewSize.height
+                            )
+                            CourtGeometryHelper.updateCorner(corners: &corners, index: i, rawTouch: touchNorm)
                         }
                         .onEnded { _ in
                             activeDraggingIndex = nil
