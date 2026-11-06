@@ -112,6 +112,19 @@ public final class PlayerTrackerService: PlayerTracking, ObservableObject {
         }
     }
     
+    /// Cập nhật tên của một cầu thủ theo index
+    public func updatePlayerName(at index: Int, newName: String) {
+        guard index >= 0 && index < activeTracks.count else { return }
+        activeTracks[index].name = newName
+    }
+    
+    /// Cập nhật danh sách tên của toàn bộ 4 cầu thủ
+    public func setAllPlayerNames(_ names: [String]) {
+        for i in 0..<min(names.count, activeTracks.count) {
+            activeTracks[i].name = names[i]
+        }
+    }
+    
     // MARK: - Main Update Loop
     
     /// Tiếp nhận pixelBuffer từ Camera, nhận diện khớp cổ chân và liên kết bám vết cầu thủ

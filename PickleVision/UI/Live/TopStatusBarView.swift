@@ -61,75 +61,77 @@ public struct TopStatusBarView: View {
     // MARK: - Body
     
     public var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 6) {
             
             // 1. Tỷ số trận đấu (Side-out score)
             ScoreBoardBadge(score: matchScore)
             
             Divider()
-                .frame(height: 24)
+                .frame(height: 18)
                 .background(Color.white.opacity(0.2))
             
             // 2. Thời gian pha cầu hiện tại
             MetricPill(
-                title: "THỜI GIAN PHA",
+                title: "PHA CẦU",
                 value: formattedRallyTime,
                 icon: "stopwatch.fill",
                 accentColor: .yellow
             )
             
             Divider()
-                .frame(height: 24)
+                .frame(height: 18)
                 .background(Color.white.opacity(0.2))
             
             // 3. Pha số
             MetricPill(
                 title: "PHA SỐ",
-                value: "Pha \(rallyIndex)",
+                value: "#\(rallyIndex)",
                 icon: "number.square.fill",
                 accentColor: .white
             )
             
             Divider()
-                .frame(height: 24)
+                .frame(height: 18)
                 .background(Color.white.opacity(0.2))
             
             // 4. Lượt cầu đổi hướng (Shot exchanges)
             MetricPill(
-                title: "LƯỢT ĐỔI HƯỚNG",
+                title: "ĐỔI HƯỚNG",
                 value: "\(shotExchanges)",
                 icon: "arrow.left.and.right.square.fill",
                 accentColor: .cyan
             )
             
             Divider()
-                .frame(height: 24)
+                .frame(height: 18)
                 .background(Color.white.opacity(0.2))
             
             // 5. Thời gian chơi thực tích lũy
             MetricPill(
-                title: "THỜI GIAN CHƠI",
+                title: "T.GIAN CHƠI",
                 value: formattedPlayTime,
                 icon: "clock.badge.checkmark.fill",
                 accentColor: Color(red: 0.2, green: 0.9, blue: 0.7)
             )
             
-            Spacer(minLength: 4)
+            Spacer(minLength: 2)
             
             // Nút trạng thái hiệu chuẩn sân
             Button(action: {
                 onCalibrationTapped?()
             }) {
-                HStack(spacing: 5) {
+                HStack(spacing: 4) {
                     Image(systemName: isCalibrated ? "camera.metering.matrix" : "exclamationmark.triangle.fill")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundColor(isCalibrated ? .green : .yellow)
-                    Text(isCalibrated ? "SÂN ĐÃ KHỚP" : "CĂN CHỈNH SÂN")
-                        .font(.system(size: 10, weight: .heavy))
-                        .foregroundColor(isCalibrated ? .white.opacity(0.8) : .yellow)
+                    Text(isCalibrated ? "ĐÃ KHỚP" : "CĂN CHỈNH")
+                        .font(.system(size: 9.5, weight: .heavy))
+                        .foregroundColor(isCalibrated ? .white.opacity(0.85) : .yellow)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
                 .background(
                     Capsule()
                         .fill(isCalibrated ? Color.white.opacity(0.08) : Color.yellow.opacity(0.2))
@@ -143,17 +145,17 @@ public struct TopStatusBarView: View {
             // 6. Trạng thái trực tiếp của trận đấu
             LiveRallyStatePill(state: rallyState)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(.ultraThinMaterial.opacity(0.92))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(Color.white.opacity(0.22), lineWidth: 1)
                 )
         )
-        .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
+        .shadow(color: .black.opacity(0.35), radius: 8, x: 0, y: 4)
     }
 }
 
@@ -163,19 +165,23 @@ private struct ScoreBoardBadge: View {
     let score: MatchScore
     
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             Image(systemName: "sportscourt.fill")
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundColor(.yellow)
             
-            VStack(alignment: .leading, spacing: 1) {
-                Text(score.servingTeam == .nearTeam ? "ĐỘI GẦN GIAO" : "ĐỘI XA GIAO")
-                    .font(.system(size: 8, weight: .black))
+            VStack(alignment: .leading, spacing: 0) {
+                Text(score.servingTeam == .nearTeam ? "GẦN GIAO" : "XA GIAO")
+                    .font(.system(size: 7.5, weight: .black))
                     .foregroundColor(.white.opacity(0.6))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 
                 Text(score.displayString)
-                    .font(.system(size: 15, weight: .heavy, design: .monospaced))
+                    .font(.system(size: 12, weight: .heavy, design: .monospaced))
                     .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
         }
     }
@@ -188,21 +194,23 @@ private struct MetricPill: View {
     let accentColor: Color
     
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 10, weight: .bold))
                 .foregroundColor(accentColor)
             
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(title)
-                    .font(.system(size: 8.5, weight: .bold))
+                    .font(.system(size: 7.5, weight: .bold))
                     .foregroundColor(.white.opacity(0.6))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 
                 Text(value)
-                    .font(.system(size: 14, weight: .heavy, design: .monospaced))
+                    .font(.system(size: 11.5, weight: .heavy, design: .monospaced))
                     .foregroundColor(.white)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
         }
     }
@@ -216,23 +224,23 @@ private struct LiveRallyStatePill: View {
     private var pillConfig: (text: String, color: Color, isLive: Bool) {
         switch state {
         case .waitingForServe:
-            return ("CHỜ GIAO BÓNG", Color(red: 0.25, green: 0.6, blue: 1.0), false) // Xanh dương
+            return ("CHỜ GIAO", Color(red: 0.25, green: 0.6, blue: 1.0), false)
         case .serveInFlight:
             return ("GIAO BÓNG", Color.yellow, true)
         case .inProgress:
-            return ("ĐANG ĐÁNH", Color(red: 0.15, green: 0.88, blue: 0.45), true) // Xanh lá
+            return ("ĐANG ĐÁNH", Color(red: 0.15, green: 0.88, blue: 0.45), true)
         case .ended(let reason, _):
             switch reason {
             case .ballOut:
-                return ("BÓNG NGOÀI (OUT)", Color(red: 0.95, green: 0.25, blue: 0.25), false)
+                return ("BÓNG OUT", Color(red: 0.95, green: 0.25, blue: 0.25), false)
             case .kitchenFaultServe:
-                return ("LỖI BẾP (FAULT)", Color(red: 0.95, green: 0.25, blue: 0.25), false)
+                return ("LỖI BẾP", Color(red: 0.95, green: 0.25, blue: 0.25), false)
             case .doubleBounce:
                 return ("2 LẦN NẢY", Color.orange, false)
             case .netFault:
                 return ("VƯỚNG LƯỚI", Color.orange, false)
             default:
-                return ("KẾT THÚC PHA", Color.orange, false)
+                return ("HẾT PHA", Color.orange, false)
             }
         }
     }
@@ -240,29 +248,30 @@ private struct LiveRallyStatePill: View {
     var body: some View {
         let config = pillConfig
         
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             Circle()
                 .fill(config.color)
-                .frame(width: 8, height: 8)
+                .frame(width: 6, height: 6)
                 .overlay(
                     Circle()
-                        .stroke(config.color.opacity(0.6), lineWidth: 2)
+                        .stroke(config.color.opacity(0.6), lineWidth: 1.5)
                         .scaleEffect(config.isLive && isPulsing ? 2.0 : 1.0)
                         .opacity(config.isLive && isPulsing ? 0.0 : 0.8)
                 )
             
             Text(config.text)
-                .font(.system(size: 11, weight: .black))
+                .font(.system(size: 9.5, weight: .black))
                 .foregroundColor(.white)
                 .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(
             Capsule()
                 .fill(config.color.opacity(0.22))
                 .overlay(
-                    Capsule().stroke(config.color.opacity(0.75), lineWidth: 1.2)
+                    Capsule().stroke(config.color.opacity(0.75), lineWidth: 1.0)
                 )
         )
         .onAppear {

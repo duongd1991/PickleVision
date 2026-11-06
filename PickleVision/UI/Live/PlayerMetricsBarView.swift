@@ -20,6 +20,7 @@ public struct PlayerMetricsBarView: View {
     public var onVARTapped: (() -> Void)? = nil
     public var onSummaryTapped: (() -> Void)? = nil
     public var onPlayPauseToggled: (() -> Void)? = nil
+    public var onEditPlayersTapped: (() -> Void)? = nil
     
     public init(
         metrics: [PlayerRallyMetric],
@@ -28,7 +29,8 @@ public struct PlayerMetricsBarView: View {
         onScrubberChanged: ((Double) -> Void)? = nil,
         onVARTapped: (() -> Void)? = nil,
         onSummaryTapped: (() -> Void)? = nil,
-        onPlayPauseToggled: (() -> Void)? = nil
+        onPlayPauseToggled: (() -> Void)? = nil,
+        onEditPlayersTapped: (() -> Void)? = nil
     ) {
         self.metrics = metrics
         self._isLivePlayback = isLivePlayback
@@ -37,6 +39,7 @@ public struct PlayerMetricsBarView: View {
         self.onVARTapped = onVARTapped
         self.onSummaryTapped = onSummaryTapped
         self.onPlayPauseToggled = onPlayPauseToggled
+        self.onEditPlayersTapped = onEditPlayersTapped
     }
     
     // MARK: - Fallback Players if telemetry is empty
@@ -173,18 +176,36 @@ public struct PlayerMetricsBarView: View {
                 }
                 .buttonStyle(.plain)
                 
+                // Nút Đổi Tên Cầu Thủ
+                Button(action: {
+                    onEditPlayersTapped?()
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("ĐỔI TÊN")
+                            .font(.system(size: 8.5, weight: .black))
+                    }
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.12))
+                    .foregroundColor(.white)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                
                 // Nút Tổng Kết Trận Đấu
                 Button(action: {
                     onSummaryTapped?()
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: "chart.bar.xaxis")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                         Text("TỔNG KẾT")
-                            .font(.system(size: 9, weight: .black))
+                            .font(.system(size: 8.5, weight: .black))
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
                     .background(Color.white.opacity(0.12))
                     .foregroundColor(.white)
                     .clipShape(Capsule())
@@ -194,9 +215,12 @@ public struct PlayerMetricsBarView: View {
             .padding(.horizontal, 4)
             
             // 2. Danh sách 4 thẻ cầu thủ xếp ngang đều
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 ForEach(displayMetrics) { player in
                     PlayerCardView(metric: player)
+                        .onTapGesture {
+                            onEditPlayersTapped?()
+                        }
                 }
             }
         }

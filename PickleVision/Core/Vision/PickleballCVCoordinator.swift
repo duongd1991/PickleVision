@@ -69,6 +69,31 @@ public final class PickleballCVCoordinator: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Cập nhật tên cầu thủ
+    
+    /// Cập nhật tên của một cầu thủ theo index
+    public func updatePlayerName(at index: Int, newName: String) {
+        playerTrackerService.updatePlayerName(at: index, newName: newName)
+        for i in 0..<trackedPlayers.count {
+            if trackedPlayers[i].playerIndex == index {
+                trackedPlayers[i].name = newName
+            }
+        }
+        for i in 0..<currentTelemetry.players.count {
+            if currentTelemetry.players[i].playerIndex == index {
+                currentTelemetry.players[i].name = newName
+            }
+        }
+    }
+    
+    /// Cập nhật tên toàn bộ 4 cầu thủ
+    public func setAllPlayerNames(_ names: [String]) {
+        playerTrackerService.setAllPlayerNames(names)
+        for i in 0..<names.count {
+            updatePlayerName(at: i, newName: names[i])
+        }
+    }
+    
     // MARK: - Pipeline Processing Entry Point
     
     /// Tiếp nhận khung hình từ CameraManager hoặc Video Data Output

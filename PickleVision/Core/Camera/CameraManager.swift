@@ -167,11 +167,11 @@ public final class CameraManager: NSObject, ObservableObject {
             return
         }
         
-        // 5. Kết nối Video và hướng khung hình
+        // 5. Kết nối Video và hướng khung hình (Mặc định quay ngang Landscape cho sân thi đấu)
         if let connection = videoDataOutput.connection(with: .video) {
             self.videoConnection = connection
             if connection.isVideoOrientationSupported {
-                connection.videoOrientation = .portrait
+                connection.videoOrientation = .landscapeRight
             }
         }
         
@@ -303,6 +303,16 @@ public final class CameraManager: NSObject, ObservableObject {
                 }
             } catch {
                 print("[CameraManager] Không thể mở khóa thông số quang học: \(error)")
+            }
+        }
+    }
+    
+    /// Thay đổi hướng quay video của camera (Landscape Right / Landscape Left / Portrait)
+    public func setVideoOrientation(_ orientation: AVCaptureVideoOrientation) {
+        sessionQueue.async { [weak self] in
+            guard let self = self, let connection = self.videoConnection else { return }
+            if connection.isVideoOrientationSupported {
+                connection.videoOrientation = orientation
             }
         }
     }

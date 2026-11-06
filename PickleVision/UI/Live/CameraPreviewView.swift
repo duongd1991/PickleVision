@@ -131,7 +131,14 @@ public struct CameraPreviewView: UIViewRepresentable {
                 float2 texCoords;
             };
             
-            vertex VertexOut videoVertexShader(uint vertexID [[vertex_id]]) {
+            struct DisplayUniforms {
+                float2 scale;
+            };
+            
+            vertex VertexOut videoVertexShader(
+                uint vertexID [[vertex_id]],
+                constant DisplayUniforms &uniforms [[buffer(0)]]
+            ) {
                 float2 positions[4] = {
                     float2(-1.0, -1.0),
                     float2( 1.0, -1.0),
@@ -146,7 +153,7 @@ public struct CameraPreviewView: UIViewRepresentable {
                 };
                 
                 VertexOut out;
-                out.position = float4(positions[vertexID], 0.0, 1.0);
+                out.position = float4(positions[vertexID] * uniforms.scale, 0.0, 1.0);
                 out.texCoords = texCoords[vertexID];
                 return out;
             }
@@ -229,6 +236,31 @@ public struct CameraPreviewView: UIViewRepresentable {
                   let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
                 return
             }
+            
+            // Tính toán scale Aspect-Fit bảo toàn tỉ lệ thực tế, không làm méo/kéo giãn khung hình camera
+            let viewW = Float(view.bounds.width)
+            let viewH = Float(view.bounds.height)
+            let vidW = Float(width)
+            let vidH = Float(height)
+            var scaleX: Float = 1.0
+            var scaleY: Float = 1.0
+            if viewW > 0 && viewH > 0 && vidW > 0 && vidH > 0 {
+                let viewAspect = viewW / viewH
+                let vidAspect = vidW / vidH
+                if viewAspect > vidAspect {
+                    scaleX = vidAspect / viewAspect
+                    scaleY = 1.0
+                } else {
+                    scaleX = 1.0
+                    scaleY = viewAspect / vidAspect
+                }
+            }
+            
+            struct DisplayUniforms {
+                var scale: SIMD2<Float>
+            }
+            var uniforms = DisplayUniforms(scale: SIMD2<Float>(scaleX, scaleY))
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<DisplayUniforms>.stride, index: 0)
             
             if pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange ||
                pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange {

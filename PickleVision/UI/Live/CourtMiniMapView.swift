@@ -224,7 +224,7 @@ public struct CourtMiniMapView: View {
                 .padding(.bottom, 6)
             }
         }
-        .frame(width: 170, height: 260)
+        .frame(width: 140, height: 210)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(.ultraThinMaterial.opacity(0.88))

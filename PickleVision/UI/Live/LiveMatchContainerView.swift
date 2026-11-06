@@ -40,6 +40,12 @@ public struct LiveMatchContainerView: View {
     @State private var showVARReviewModal: Bool = false
     @State private var selectedVAREvent: VARDecisionData? = nil
     @State private var showMatchSummarySheet: Bool = false
+    @State private var showPlayerEditSheet: Bool = false
+    
+    private var isCalibrating: Bool {
+        if case .courtCalibration = interactionMode { return true }
+        return false
+    }
     
     public init() {}
     
@@ -59,94 +65,110 @@ public struct LiveMatchContainerView: View {
                 )
                 .ignoresSafeArea()
                 
-                // 2. LỚP PHỦ ĐỒ HỌA VECTOR METAL / CANVAS HUD
-                VectorHUDOverlayView(
-                    players: cvCoordinator.trackedPlayers,
-                    ballObservation: cvCoordinator.currentTelemetry.lastBallObservation,
-                    ballTrajectory: cvCoordinator.ballTrackerService.trajectoryTrailCourt,
-                    courtModel: cvCoordinator.currentCourtModel,
-                    viewSize: geometry.size
-                )
-                .ignoresSafeArea()
-                
-                // Lớp hướng dẫn căn chỉnh sân nếu đang ở chế độ Calibration
-                if case .courtCalibration(let selectedCorner) = interactionMode {
+                if isCalibrating {
+                    // CHẾ ĐỘ HIỆU CHUẨN: Ẩn toàn bộ các thanh bar, CHỈ HIỂN THỊ ROI 4 GÓC VÀ NÚT XÁC NHẬN
                     CalibrationGuideOverlay(
                         corners: calibrationCorners,
-                        selectedCornerIndex: selectedCorner,
+                        selectedCornerIndex: {
+                            if case .courtCalibration(let idx) = interactionMode { return idx }
+                            return nil
+                        }(),
                         viewSize: geometry.size,
+                        onReset: {
+                            calibrationCorners = [
+                                CGPoint(x: 0.15, y: 0.85),
+                                CGPoint(x: 0.85, y: 0.85),
+                                CGPoint(x: 0.70, y: 0.28),
+                                CGPoint(x: 0.30, y: 0.28)
+                            ]
+                        },
                         onDone: {
-                            interactionMode = .livePlayback
+                            applyCalibration(normalizedCorners: calibrationCorners, viewSize: geometry.size)
+                            withAnimation(.spring()) {
+                                interactionMode = .livePlayback
+                            }
                         }
                     )
-                }
-                
-                // 3. LỚP GIAO DIỆN ĐIỀU KHIỂN & CHỈ SỐ SWIFTUI GLASSMORPHISM
-                VStack(spacing: 0) {
+                    .transition(.opacity)
+                    .zIndex(50)
+                } else {
+                    // 2. LỚP PHỦ ĐỒ HỌA VECTOR METAL / CANVAS HUD
+                    VectorHUDOverlayView(
+                        players: cvCoordinator.trackedPlayers,
+                        ballObservation: cvCoordinator.currentTelemetry.lastBallObservation,
+                        ballTrajectory: cvCoordinator.ballTrackerService.trajectoryTrailCourt,
+                        courtModel: cvCoordinator.currentCourtModel,
+                        viewSize: geometry.size
+                    )
+                    .ignoresSafeArea()
                     
-                    // Top Status Bar ở mép trên
-                    TopStatusBarView(
-                        rallyDuration: cvCoordinator.currentTelemetry.rallyDuration,
-                        rallyIndex: cvCoordinator.currentTelemetry.rallyIndex,
-                        shotExchanges: cvCoordinator.currentTelemetry.shotCount,
-                        effectivePlayTime: cvCoordinator.currentTelemetry.effectivePlayTime,
-                        rallyState: cvCoordinator.currentTelemetry.state,
-                        matchScore: cvCoordinator.currentTelemetry.currentScore,
-                        isCalibrated: calibrationService.isCalibrated,
-                        onCalibrationTapped: {
-                            withAnimation(.spring()) {
-                                if case .courtCalibration = interactionMode {
-                                    interactionMode = .livePlayback
-                                } else {
+                    // 3. LỚP GIAO DIỆN ĐIỀU KHIỂN & CHỈ SỐ SWIFTUI GLASSMORPHISM
+                    VStack(spacing: 0) {
+                        
+                        // Top Status Bar ở mép trên
+                        TopStatusBarView(
+                            rallyDuration: cvCoordinator.currentTelemetry.rallyDuration,
+                            rallyIndex: cvCoordinator.currentTelemetry.rallyIndex,
+                            shotExchanges: cvCoordinator.currentTelemetry.shotCount,
+                            effectivePlayTime: cvCoordinator.currentTelemetry.effectivePlayTime,
+                            rallyState: cvCoordinator.currentTelemetry.state,
+                            matchScore: cvCoordinator.currentTelemetry.currentScore,
+                            isCalibrated: calibrationService.isCalibrated,
+                            onCalibrationTapped: {
+                                withAnimation(.spring()) {
                                     interactionMode = .courtCalibration(selectedCornerIndex: 0)
                                 }
                             }
-                        }
-                    )
-                    .padding(.horizontal, 14)
-                    .padding(.top, 8)
-                    
-                    Spacer()
-                    
-                    // Khu vực giữa: Cột phải chứa Minimap 2D chuẩn USA Pickleball
-                    HStack {
+                        )
+                        .padding(.horizontal, 10)
+                        .padding(.top, 6)
+                        
                         Spacer()
                         
-                        if showMinimap {
-                            CourtMiniMapView(data: buildMinimapData())
-                                .padding(.trailing, 14)
-                                .transition(.move(edge: .trailing).combined(with: .opacity))
+                        // Thanh đáy: 4 Thẻ chỉ số cầu thủ và Scrubber tua lại
+                        if showPlayerMetrics {
+                            PlayerMetricsBarView(
+                                metrics: cvCoordinator.currentTelemetry.players,
+                                isLivePlayback: $isLivePlayback,
+                                scrubberProgress: $scrubberProgress,
+                                onScrubberChanged: { progress in
+                                    // Xử lý tua lại video khi người dùng kéo scrubber
+                                },
+                                onVARTapped: {
+                                    triggerVARReview()
+                                },
+                                onSummaryTapped: {
+                                    showMatchSummarySheet = true
+                                },
+                                onPlayPauseToggled: {
+                                    isLivePlayback.toggle()
+                                },
+                                onEditPlayersTapped: {
+                                    showPlayerEditSheet = true
+                                }
+                            )
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 6)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                     }
                     
-                    Spacer()
-                    
-                    // Thanh đáy: 4 Thẻ chỉ số cầu thủ và Scrubber tua lại
-                    if showPlayerMetrics {
-                        PlayerMetricsBarView(
-                            metrics: cvCoordinator.currentTelemetry.players,
-                            isLivePlayback: $isLivePlayback,
-                            scrubberProgress: $scrubberProgress,
-                            onScrubberChanged: { progress in
-                                // Xử lý tua lại video khi người dùng kéo scrubber
-                            },
-                            onVARTapped: {
-                                triggerVARReview()
-                            },
-                            onSummaryTapped: {
-                                showMatchSummarySheet = true
-                            },
-                            onPlayPauseToggled: {
-                                isLivePlayback.toggle()
+                    // 4. Cột phải chứa Minimap 2D chuẩn USA Pickleball (Đặt dạng Overlay độc lập, không đẩy thanh đáy)
+                    if showMinimap {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                CourtMiniMapView(data: buildMinimapData())
+                                    .padding(.trailing, 10)
+                                    .padding(.bottom, 110)
+                                    .transition(.move(edge: .trailing).combined(with: .opacity))
                             }
-                        )
-                        .padding(.horizontal, 14)
-                        .padding(.bottom, 10)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
                     }
                 }
                 
-                // 4. Modal VAR Instant Replay (Overlay)
+                // 5. Modal VAR Instant Replay (Overlay)
                 if showVARReviewModal, let varEvent = selectedVAREvent {
                     InstantReplayVARView(
                         event: varEvent,
@@ -163,17 +185,32 @@ public struct LiveMatchContainerView: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
+        .onAppear {
+            cameraManager.setVideoOrientation(.landscapeRight)
+        }
         .onReceive(cameraManager.framePublisher) { frame in
             self.currentFrameBuffer = frame.pixelBuffer
         }
         .onReceive(cvCoordinator.$latestVerdict) { verdict in
             if let v = verdict, v.isFaultOrOut {
-                // Tự động chuẩn bị sự kiện VAR khi có bóng ra ngoài hoặc lỗi vạch
                 prepareVAREvent(verdict: v)
             }
         }
         .sheet(isPresented: $showMatchSummarySheet) {
             MatchSummaryReportView(summary: buildMatchSummaryData())
+        }
+        .sheet(isPresented: $showPlayerEditSheet) {
+            PlayerEditSheetView(
+                initialNames: cvCoordinator.trackedPlayers.map { $0.name }.isEmpty ?
+                    ["Tú", "Cường", "Nam", "Thành"] :
+                    cvCoordinator.trackedPlayers.map { $0.name },
+                onSave: { newNames in
+                    cvCoordinator.setAllPlayerNames(newNames)
+                },
+                onDismiss: {
+                    showPlayerEditSheet = false
+                }
+            )
         }
     }
     
@@ -377,6 +414,7 @@ private struct CalibrationGuideOverlay: View {
     let corners: [CGPoint]
     let selectedCornerIndex: Int?
     let viewSize: CGSize
+    var onReset: (() -> Void)? = nil
     var onDone: () -> Void
     
     private let cornerNames = [
@@ -388,7 +426,7 @@ private struct CalibrationGuideOverlay: View {
     
     var body: some View {
         ZStack {
-            // Đường kết nối đa giác 4 chốt góc sân
+            // Đường kết nối đa giác 4 chốt góc sân (ROI)
             if corners.count == 4 {
                 Canvas { context, size in
                     var path = Path()
@@ -400,7 +438,7 @@ private struct CalibrationGuideOverlay: View {
                     path.closeSubpath()
                     
                     context.fill(path, with: .color(Color.cyan.opacity(0.18)))
-                    context.stroke(path, with: .color(Color.cyan), lineWidth: 2.0)
+                    context.stroke(path, with: .color(Color.cyan), lineWidth: 2.2)
                 }
             }
             
@@ -414,48 +452,78 @@ private struct CalibrationGuideOverlay: View {
                 VStack(spacing: 2) {
                     Circle()
                         .fill(isSelected ? Color.yellow : Color.cyan)
-                        .frame(width: 22, height: 22)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                        .frame(width: 24, height: 24)
+                        .overlay(Circle().stroke(Color.white, lineWidth: 2.2))
                         .shadow(color: isSelected ? .yellow : .cyan, radius: 8)
                     
                     Text(cornerNames[min(i, cornerNames.count - 1)])
-                        .font(.system(size: 9, weight: .black))
+                        .font(.system(size: 9.5, weight: .black))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 7)
                         .padding(.vertical, 2)
-                        .background(Color.black.opacity(0.75))
+                        .background(Color.black.opacity(0.8))
                         .clipShape(Capsule())
                 }
                 .position(x: px, y: py)
             }
             
-            // Thanh hướng dẫn phía trên
+            // Thanh hướng dẫn và nút XÁC NHẬN duy nhất phía trên (Không bị bất kỳ UI nào che khuất)
             VStack {
-                HStack {
+                HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("CHẾ ĐỘ HIỆU CHUẨN 4 GÓC SÂN (CALIBRATION)")
-                            .font(.system(size: 13, weight: .black))
-                            .foregroundColor(.yellow)
-                        Text("Chạm và kéo 4 chốt ghim trùng với 4 góc vạch biên ngoài của sân thi đấu")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.white.opacity(0.8))
+                        HStack(spacing: 6) {
+                            Image(systemName: "camera.metering.matrix")
+                                .foregroundColor(.yellow)
+                                .font(.system(size: 13, weight: .bold))
+                            Text("CHẾ ĐỘ CĂN CHỈNH 4 GÓC SÂN (CALIBRATION)")
+                                .font(.system(size: 12, weight: .heavy))
+                                .foregroundColor(.yellow)
+                        }
+                        Text("Kéo 4 chốt ghim trùng với 4 góc ngoài của sân thi đấu")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.85))
                     }
+                    
                     Spacer()
-                    Button(action: onDone) {
-                        Text("XÁC NHẬN")
-                            .font(.system(size: 12, weight: .black))
-                            .foregroundColor(.black)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.yellow)
+                    
+                    if let reset = onReset {
+                        Button(action: reset) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.counterclockwise")
+                                Text("MẶC ĐỊNH")
+                            }
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.white.opacity(0.18))
                             .clipShape(Capsule())
+                        }
+                    }
+                    
+                    Button(action: onDone) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 12, weight: .bold))
+                            Text("XÁC NHẬN")
+                                .font(.system(size: 11, weight: .black))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(
+                            LinearGradient(colors: [Color.yellow, Color.orange], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .clipShape(Capsule())
+                        .shadow(color: .yellow.opacity(0.5), radius: 6)
                     }
                 }
-                .padding(12)
-                .background(.ultraThinMaterial)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial.opacity(0.95))
                 .clipShape(RoundedRectangle(cornerRadius: 14))
-                .padding(.horizontal, 16)
-                .padding(.top, 60)
+                .padding(.horizontal, 14)
+                .padding(.top, 10)
                 
                 Spacer()
             }
