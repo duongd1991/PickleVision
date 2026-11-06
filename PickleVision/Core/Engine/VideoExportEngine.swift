@@ -384,6 +384,18 @@ public final class VideoExportEngine {
     
     // MARK: - Graphics Burn-In Overlay
     
+    private func fillRoundedRect(_ rect: CGRect, cornerRadius: CGFloat, in context: CGContext) {
+        let path = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius).cgPath
+        context.addPath(path)
+        context.fillPath()
+    }
+    
+    private func strokeRoundedRect(_ rect: CGRect, cornerRadius: CGFloat, in context: CGContext) {
+        let path = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius).cgPath
+        context.addPath(path)
+        context.strokePath()
+    }
+    
     private func drawBurnInHUDOverlay(
         context: CGContext,
         canvasSize: CGSize,
@@ -395,11 +407,11 @@ public final class VideoExportEngine {
         // A. Thanh Trạng Thái Đỉnh (Top Status Bar)
         let topBarRect = CGRect(x: 40, y: canvasSize.height - 110, width: canvasSize.width - 80, height: 70)
         context.setFillColor(UIColor.black.withAlphaComponent(0.75).cgColor)
-        context.fill(Path(roundedRect: topBarRect, cornerRadius: 18).cgPath)
+        fillRoundedRect(topBarRect, cornerRadius: 18, in: context)
         
         context.setStrokeColor(UIColor.white.withAlphaComponent(0.25).cgColor)
         context.setLineWidth(1.5)
-        context.stroke(Path(roundedRect: topBarRect, cornerRadius: 18).cgPath)
+        strokeRoundedRect(topBarRect, cornerRadius: 18, in: context)
         
         // Vẽ Text HUD
         let rallyIdx = telemetry?.rallyIndex ?? 1
@@ -451,9 +463,9 @@ public final class VideoExportEngine {
         
         let minimapRect = CGRect(x: minimapX, y: minimapY, width: minimapWidth, height: minimapHeight)
         context.setFillColor(UIColor.black.withAlphaComponent(0.80).cgColor)
-        context.fill(Path(roundedRect: minimapRect, cornerRadius: 16).cgPath)
+        fillRoundedRect(minimapRect, cornerRadius: 16, in: context)
         context.setStrokeColor(UIColor.white.withAlphaComponent(0.3).cgColor)
-        context.stroke(Path(roundedRect: minimapRect, cornerRadius: 16).cgPath)
+        strokeRoundedRect(minimapRect, cornerRadius: 16, in: context)
         
         // Nền sân Minimap
         let courtInnerRect = minimapRect.insetBy(dx: 12, dy: 12)
@@ -497,9 +509,9 @@ public final class VideoExportEngine {
         // C. Thanh Đáy 4 Thẻ Cầu Thủ (Player Metrics Bar)
         let bottomBarRect = CGRect(x: 40, y: 30, width: canvasSize.width - 80, height: 65)
         context.setFillColor(UIColor.black.withAlphaComponent(0.75).cgColor)
-        context.fill(Path(roundedRect: bottomBarRect, cornerRadius: 16).cgPath)
+        fillRoundedRect(bottomBarRect, cornerRadius: 16, in: context)
         context.setStrokeColor(UIColor.white.withAlphaComponent(0.2).cgColor)
-        context.stroke(Path(roundedRect: bottomBarRect, cornerRadius: 16).cgPath)
+        strokeRoundedRect(bottomBarRect, cornerRadius: 16, in: context)
         
         let cardWidth = (bottomBarRect.width - 50) / 4.0
         let names = ["Tú (Gần)", "Cường (Gần)", "Nam (Xa)", "Thành (Xa)"]
@@ -509,7 +521,7 @@ public final class VideoExportEngine {
             let cardRect = CGRect(x: cardX, y: bottomBarRect.minY + 8, width: cardWidth, height: 49)
             
             context.setFillColor(UIColor.white.withAlphaComponent(0.08).cgColor)
-            context.fill(Path(roundedRect: cardRect, cornerRadius: 10).cgPath)
+            fillRoundedRect(cardRect, cornerRadius: 10, in: context)
             
             drawText(names[i], at: CGPoint(x: cardRect.minX + 8, y: cardRect.maxY - 18), fontSize: 13, bold: true, color: playerColorForIndex(i), context: context)
             drawText("Quãng đường: 18.5 m", at: CGPoint(x: cardRect.minX + 8, y: cardRect.maxY - 36), fontSize: 11, bold: false, color: .white, context: context)

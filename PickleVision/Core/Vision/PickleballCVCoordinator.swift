@@ -58,6 +58,17 @@ public final class PickleballCVCoordinator: NSObject, ObservableObject {
         super.init()
     }
     
+    // MARK: - Court Homography Update
+    
+    /// Cập nhật ma trận phối cảnh cho mô hình sân thi đấu
+    public func updateCourtHomography(_ h: simd_float3x3) {
+        var updated = currentCourtModel
+        updated.updateHomography(h)
+        DispatchQueue.main.async {
+            self.currentCourtModel = updated
+        }
+    }
+    
     // MARK: - Pipeline Processing Entry Point
     
     /// Tiếp nhận khung hình từ CameraManager hoặc Video Data Output

@@ -204,14 +204,17 @@ public final class BallTrackerService: BallTracking, ObservableObject {
         CVPixelBufferLockBaseAddress(currentBuffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(currentBuffer, .readOnly) }
         
-        guard let currPtr = CVPixelBufferGetBaseAddress(currentBuffer)?.assumingMemoryBound(to: UInt8.self) else {
+        guard let currBase = CVPixelBufferGetBaseAddress(currentBuffer) else {
             return nil
         }
+        let currPtr = currBase.assumingMemoryBound(to: UInt8.self)
         
-        var prev1Ptr: UnsafePointer<UInt8>?
+        var prev1Ptr: UnsafePointer<UInt8>? = nil
         if let p1 = prev1 {
             CVPixelBufferLockBaseAddress(p1, .readOnly)
-            prev1Ptr = CVPixelBufferGetBaseAddress(p1)?.assumingMemoryBound(to: UInt8.self)
+            if let p1Base = CVPixelBufferGetBaseAddress(p1) {
+                prev1Ptr = UnsafePointer(p1Base.assumingMemoryBound(to: UInt8.self))
+            }
         }
         defer {
             if let p1 = prev1 { CVPixelBufferUnlockBaseAddress(p1, .readOnly) }

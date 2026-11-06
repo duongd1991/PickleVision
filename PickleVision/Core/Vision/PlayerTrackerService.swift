@@ -12,6 +12,53 @@ import CoreGraphics
 import CoreVideo
 import simd
 
+/// Phát hiện người chơi tức thời từ một frame camera
+public struct PlayerDetection {
+    public let screenGround: CGPoint
+    public let screenBBox: CGRect
+    public let leftAnkle: CGPoint?
+    public let rightAnkle: CGPoint?
+    public let courtPosition: CGPoint
+    public let confidence: Float
+    public let colorHist: [Float]
+    
+    public init(
+        screenGround: CGPoint,
+        screenBBox: CGRect,
+        leftAnkle: CGPoint?,
+        rightAnkle: CGPoint?,
+        courtPosition: CGPoint,
+        confidence: Float,
+        colorHist: [Float]
+    ) {
+        self.screenGround = screenGround
+        self.screenBBox = screenBBox
+        self.leftAnkle = leftAnkle
+        self.rightAnkle = rightAnkle
+        self.courtPosition = courtPosition
+        self.confidence = confidence
+        self.colorHist = colorHist
+    }
+}
+
+extension VNHumanBodyPoseObservation {
+    /// Bounding box bao quanh toàn bộ các điểm khớp xương được nhận diện
+    var boundingBox: CGRect {
+        guard let points = try? recognizedPoints(.all) else {
+            return CGRect(x: 0, y: 0, width: 0.1, height: 0.1)
+        }
+        let validLocations = points.values.filter { $0.confidence > 0.1 }.map { $0.location }
+        guard !validLocations.isEmpty else {
+            return CGRect(x: 0, y: 0, width: 0.1, height: 0.1)
+        }
+        let minX = validLocations.map { $0.x }.min() ?? 0.0
+        let maxX = validLocations.map { $0.x }.max() ?? 1.0
+        let minY = validLocations.map { $0.y }.min() ?? 0.0
+        let maxY = validLocations.map { $0.y }.max() ?? 1.0
+        return CGRect(x: minX, y: minY, width: max(0.05, maxX - minX), height: max(0.05, maxY - minY))
+    }
+}
+
 /// Interface protocol cho module theo dõi cầu thủ
 public protocol PlayerTracking: AnyObject {
     func update(with pixelBuffer: CVPixelBuffer, homography: simd_float3x3) -> [PlayerTrack]
@@ -218,7 +265,7 @@ public final class PlayerTrackerService: PlayerTracking, ObservableObject {
         // Trích xuất vùng thân giữa vai và hông
         guard let leftShoulder = try? observation.recognizedPoint(.leftShoulder),
               let rightShoulder = try? observation.recognizedPoint(.rightShoulder),
-              let root = try? observation.recognizedPoint(.root) ?? observation.recognizedPoint(.leftHip) else {
+              let root = (try? observation.recognizedPoint(.root)) ?? (try? observation.recognizedPoint(.leftHip)) else {
             return [Float](repeating: 0.0, count: 24)
         }
         
@@ -331,7 +378,7 @@ public final class PlayerTrackerService: PlayerTracking, ObservableObject {
                 // 1. Khoảng cách không gian sân thực (mét)
                 let dx = Float(predictedPos.x - det.courtPosition.x)
                 let dy = Float(predictedPos.y - det.courtPosition.y)
-                let spatialDist = sqrt(dx * dx + dy * dy)
+                let spatialDist = hypot(dx, dy)
                 
                 guard spatialDist <= maxAssociationDistanceMeters else { continue }
                 

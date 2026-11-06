@@ -304,7 +304,7 @@ public struct LiveMatchContainerView: View {
         }
         _ = calibrationService.calibrate(withPixelCorners: pixelCorners)
         if let h = calibrationService.homographyMatrix {
-            cvCoordinator.currentCourtModel.updateHomography(h)
+            cvCoordinator.updateCourtHomography(h)
         }
     }
 }
