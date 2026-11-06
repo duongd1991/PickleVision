@@ -8,9 +8,8 @@ settings:
     SWIFT_VERSION: "5.9"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     TARGETED_DEVICE_FAMILY: "1,2"
-    CODE_SIGNING_ALLOWED: NO
     CODE_SIGNING_REQUIRED: NO
-    CODE_SIGN_IDENTITY: ""
+    CODE_SIGN_IDENTITY: "-"
 targets:
   PickleVision:
     type: application
@@ -28,9 +27,8 @@ targets:
         PRODUCT_NAME: PickleVision
         PRODUCT_BUNDLE_IDENTIFIER: com.picklevision.app
         GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGNING_ALLOWED: NO
         CODE_SIGNING_REQUIRED: NO
-        CODE_SIGN_IDENTITY: ""
+        CODE_SIGN_IDENTITY: "-"
         AD_HOC_CODE_SIGNING_ALLOWED: YES
 
 schemes:
