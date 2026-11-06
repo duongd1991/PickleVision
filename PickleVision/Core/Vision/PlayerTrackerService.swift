@@ -51,11 +51,13 @@ extension VNHumanBodyPoseObservation {
         guard !validLocations.isEmpty else {
             return CGRect(x: 0, y: 0, width: 0.1, height: 0.1)
         }
-        let minX = validLocations.map { $0.x }.min() ?? 0.0
-        let maxX = validLocations.map { $0.x }.max() ?? 1.0
-        let minY = validLocations.map { $0.y }.min() ?? 0.0
-        let maxY = validLocations.map { $0.y }.max() ?? 1.0
-        return CGRect(x: minX, y: minY, width: max(0.05, maxX - minX), height: max(0.05, maxY - minY))
+        let minX: CGFloat = validLocations.map { $0.x }.min() ?? 0.0
+        let maxX: CGFloat = validLocations.map { $0.x }.max() ?? 1.0
+        let minY: CGFloat = validLocations.map { $0.y }.min() ?? 0.0
+        let maxY: CGFloat = validLocations.map { $0.y }.max() ?? 1.0
+        let w: CGFloat = max(CGFloat(0.05), maxX - minX)
+        let h: CGFloat = max(CGFloat(0.05), maxY - minY)
+        return CGRect(x: minX, y: minY, width: w, height: h)
     }
 }
 
