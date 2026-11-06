@@ -1,0 +1,9 @@
+# Xcode & Build artifacts
+build/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+*.ipa
+*.zip
+.DS_Store
+*.log
