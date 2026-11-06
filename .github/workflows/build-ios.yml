@@ -50,6 +50,14 @@ jobs:
             grep -E "error:|fatal error:" xcodebuild.log || tail -n 80 xcodebuild.log
             echo "======================================================"
             
+            # Đẩy lỗi ra GitHub Annotations để đọc được qua API
+            grep -E "\.swift:[0-9]+:[0-9]+: error:" xcodebuild.log | while IFS= read -r line; do
+              echo "::error title=Swift Compiler Error::$line"
+            done
+            grep -i "error:" xcodebuild.log | head -n 30 | while IFS= read -r line; do
+              echo "::error title=Build Error::$line"
+            done
+            
             echo "### ❌ Xcodebuild Build Errors" >> $GITHUB_STEP_SUMMARY
             echo '```text' >> $GITHUB_STEP_SUMMARY
             (grep -E "error:|fatal error:" xcodebuild.log || tail -n 80 xcodebuild.log) >> $GITHUB_STEP_SUMMARY
