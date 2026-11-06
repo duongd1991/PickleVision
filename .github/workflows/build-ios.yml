@@ -24,20 +24,22 @@ jobs:
           echo "=== 1. Generating Xcode project from project.yml ==="
           xcodegen generate
           
-          echo "=== 2. Compiling with xcodebuild (iOS Device target) ==="
+          echo "=== 2. Project Target Info ==="
+          xcodebuild -project PickleVision.xcodeproj -list
+          
+          echo "=== 3. Compiling with xcodebuild (iOS Device target) ==="
           xcodebuild \
             -project PickleVision.xcodeproj \
-            -scheme PickleVision \
+            -target PickleVision \
             -configuration Release \
             -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             build
             
-          echo "=== 3. Packaging into PickleVision.ipa ==="
+          echo "=== 4. Packaging into PickleVision.ipa ==="
           mkdir -p build/Payload
           APP_PATH=$(find build/DerivedData -name "PickleVision.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
