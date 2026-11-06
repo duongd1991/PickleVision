@@ -69,7 +69,6 @@ struct PickleVisionApp: App {
                             self.playerNames = names
                             self.initialServerIndex = server
                             self.cvCoordinator.setAllPlayerNames(names)
-                            self.cvCoordinator.currentTelemetry.serverIndex = server
                             withAnimation(.easeInOut(duration: 0.25)) {
                                 currentScreen = .courtCalibration
                             }
