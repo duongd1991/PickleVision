@@ -143,16 +143,6 @@ public final class PlayerTrackerService: PlayerTracking, ObservableObject {
         }
         
         // 2. Trích xuất Detection: Vị trí tiếp đất cổ chân và Bounding Box
-        struct PlayerDetection {
-            let screenGround: CGPoint
-            let screenBBox: CGRect
-            let leftAnkle: CGPoint?
-            let rightAnkle: CGPoint?
-            let courtPosition: CGPoint
-            let confidence: Float
-            let colorHist: [Float]
-        }
-        
         var detections: [PlayerDetection] = []
         
         for obs in observations {
