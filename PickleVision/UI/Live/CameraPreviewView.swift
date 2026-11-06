@@ -86,8 +86,8 @@ public struct CameraPreviewView: UIViewRepresentable {
     public final class Coordinator: NSObject, MTKViewDelegate {
         var parent: CameraPreviewView
         
-        private var device: MTLDevice!
-        private var commandQueue: MTLCommandQueue!
+        private var device: MTLDevice?
+        private var commandQueue: MTLCommandQueue?
         private var yuvPipelineState: MTLRenderPipelineState?
         private var bgraPipelineState: MTLRenderPipelineState?
         private var textureCache: CVMetalTextureCache?

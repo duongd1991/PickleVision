@@ -22,11 +22,30 @@ targets:
       - path: UI
     info:
       path: App/Info.plist
+      properties:
+        CFBundleDisplayName: PickleVision
+        CFBundleIdentifier: com.picklevision.app
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        NSCameraUsageDescription: "PickleVision cần quyền truy cập Camera để phân tích đường bóng và vận động viên Pickleball theo thời gian thực (60/120fps)."
+        NSMicrophoneUsageDescription: "PickleVision cần quyền Micro để ghi âm trận đấu khi xuất video highlight."
+        NSPhotoLibraryAddUsageDescription: "PickleVision cần quyền lưu video phân tích vào Thư viện ảnh."
+        NSPhotoLibraryUsageDescription: "PickleVision cần quyền truy cập Thư viện ảnh để xem lại và xuất video trận đấu."
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortrait
     settings:
       base:
         PRODUCT_NAME: PickleVision
         PRODUCT_BUNDLE_IDENTIFIER: com.picklevision.app
-        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSCameraUsageDescription: "PickleVision cần quyền truy cập Camera để phân tích đường bóng và vận động viên Pickleball theo thời gian thực (60/120fps)."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "PickleVision cần quyền Micro để ghi âm trận đấu khi xuất video highlight."
+        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "PickleVision cần quyền lưu video phân tích vào Thư viện ảnh."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "PickleVision cần quyền truy cập Thư viện ảnh để xem lại và xuất video trận đấu."
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGN_IDENTITY: "-"
         AD_HOC_CODE_SIGNING_ALLOWED: YES

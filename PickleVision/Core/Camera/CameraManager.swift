@@ -210,6 +210,11 @@ public final class CameraManager: NSObject, ObservableObject {
             }
         }
         
+        if bestFormat == nil {
+            bestFormat = device.activeFormat
+            bestFrameRateRange = device.activeFormat.videoSupportedFrameRateRanges.first
+        }
+        
         guard let selectedFormat = bestFormat, let selectedRange = bestFrameRateRange else {
             throw CameraConfigurationError.formatNotSupported(fps: preferredFPS)
         }

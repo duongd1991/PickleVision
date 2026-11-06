@@ -46,7 +46,7 @@ struct PickleVisionApp: App {
     private func configureAudioVideoSession() {
         do {
             let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.ambient, mode: .videoRecording, options: [.mixWithOthers])
+            try audioSession.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
             try audioSession.setActive(true)
         } catch {
             print("[PickleVisionApp] Cảnh báo cấu hình AVAudioSession: \(error.localizedDescription)")

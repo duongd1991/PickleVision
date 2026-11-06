@@ -56,13 +56,26 @@ jobs:
           set -e
           
           echo "=== 4. Packaging into PickleVision.ipa ==="
-          mkdir -p build/Payload
           APP_PATH=$(find build/DerivedData -name "PickleVision.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "Error: PickleVision.app not found in build directory!"
             exit 1
           fi
           echo "Found app at: $APP_PATH"
+          
+          echo "=== 5. Verifying & injecting privacy keys into Info.plist ==="
+          plutil -replace NSCameraUsageDescription -string "PickleVision cần quyền truy cập Camera để phân tích đường bóng và vận động viên Pickleball theo thời gian thực (60/120fps)." "$APP_PATH/Info.plist"
+          plutil -replace NSMicrophoneUsageDescription -string "PickleVision cần quyền Micro để ghi âm trận đấu khi xuất video highlight." "$APP_PATH/Info.plist"
+          plutil -replace NSPhotoLibraryAddUsageDescription -string "PickleVision cần quyền lưu video phân tích vào Thư viện ảnh." "$APP_PATH/Info.plist"
+          plutil -replace NSPhotoLibraryUsageDescription -string "PickleVision cần quyền truy cập Thư viện ảnh để xem lại và xuất video trận đấu." "$APP_PATH/Info.plist"
+          plutil -replace UILaunchScreen -xml "<dict/>" "$APP_PATH/Info.plist"
+          echo "Verified Info.plist contents:"
+          plutil -p "$APP_PATH/Info.plist"
+          
+          echo "=== 6. Re-signing ad-hoc after Info.plist injection ==="
+          codesign --force --sign - --timestamp=none "$APP_PATH"
+          
+          mkdir -p build/Payload
           cp -R "$APP_PATH" build/Payload/
           cd build
           zip -r PickleVision.ipa Payload
