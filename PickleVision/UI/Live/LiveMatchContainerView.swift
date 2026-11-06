@@ -41,6 +41,10 @@ public struct LiveMatchContainerView: View {
     @State private var isMatchRecording: Bool = false
     @State private var showEndMatchConfirmAlert: Bool = false
     
+    // Gán cầu thủ thủ công khi chạm vào người trên màn hình
+    @State private var assigningTargetLocation: CGPoint? = nil
+    @State private var showAssignPlayerPopup: Bool = false
+    
     public var onExitToHome: (() -> Void)? = nil
     
     private var isCalibrating: Bool {
@@ -93,12 +97,34 @@ public struct LiveMatchContainerView: View {
                     // 2. LỚP PHỦ ĐỒ HỌA VECTOR METAL / CANVAS HUD
                     VectorHUDOverlayView(
                         players: cvCoordinator.trackedPlayers,
+                        unassignedDetections: cvCoordinator.playerTrackerService.latestDetections.filter { det in
+                            !cvCoordinator.trackedPlayers.contains { p in
+                                p.screenBoundingBox != .zero && p.screenBoundingBox.intersects(det.screenBBox)
+                            }
+                        },
                         ballObservation: cvCoordinator.currentTelemetry.lastBallObservation,
                         ballTrajectory: cvCoordinator.ballTrackerService.trajectoryTrailCourt,
                         courtModel: cvCoordinator.currentCourtModel,
                         viewSize: geometry.size
                     )
                     .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture { location in
+                        // Kiểm tra xem có chạm gần người nào đang di chuyển không
+                        let hitDet = cvCoordinator.playerTrackerService.latestDetections.first { det in
+                            det.screenBBox.insetBy(dx: -35, dy: -35).contains(location)
+                        }
+                        if let target = hitDet {
+                            assigningTargetLocation = target.screenGround
+                            withAnimation(.spring()) {
+                                showAssignPlayerPopup = true
+                            }
+                        } else {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                showAssignPlayerPopup = false
+                            }
+                        }
+                    }
                     
                     // 3. LỚP GIAO DIỆN ĐIỀU KHIỂN & CHỈ SỐ SWIFTUI GLASSMORPHISM
                     VStack(spacing: 0) {
@@ -163,18 +189,77 @@ public struct LiveMatchContainerView: View {
                         }
                     }
                     
-                    // 4. Cột phải chứa Minimap 2D chuẩn USA Pickleball (Đặt dạng Overlay độc lập, không đẩy thanh đáy)
+                    // 4. Cột phải chứa Minimap 2D chuẩn USA Pickleball (Căn giữa khoảng trống, không che nút)
                     if showMinimap {
-                        VStack {
+                        HStack {
                             Spacer()
-                            HStack {
-                                Spacer()
+                            VStack {
+                                Spacer(minLength: 46)
                                 CourtMiniMapView(data: buildMinimapData())
-                                    .padding(.trailing, 10)
-                                    .padding(.bottom, 110)
-                                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                                    .padding(.trailing, 8)
+                                Spacer(minLength: 88)
+                            }
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                        }
+                    }
+                    
+                    // Popover Gán Cầu Thủ Nhanh khi chạm vào người
+                    if showAssignPlayerPopup, let loc = assigningTargetLocation {
+                        VStack(spacing: 5) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.crop.circle.badge.plus")
+                                    .foregroundColor(.yellow)
+                                    .font(.system(size: 11, weight: .bold))
+                                Text("GÁN CẦU THỦ:")
+                                    .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                Button(action: { showAssignPlayerPopup = false }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.white.opacity(0.6))
+                                        .font(.system(size: 13))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            
+                            HStack(spacing: 5) {
+                                Button("A1") {
+                                    cvCoordinator.assignPlayerToLocation(playerIndex: 0, screenPoint: loc)
+                                    showAssignPlayerPopup = false
+                                }
+                                .buttonStyle(AssignPillButtonStyle(color: Color(red: 0.22, green: 0.52, blue: 0.98)))
+                                
+                                Button("A2") {
+                                    cvCoordinator.assignPlayerToLocation(playerIndex: 1, screenPoint: loc)
+                                    showAssignPlayerPopup = false
+                                }
+                                .buttonStyle(AssignPillButtonStyle(color: Color(red: 0.58, green: 0.38, blue: 0.98)))
+                                
+                                Button("B1") {
+                                    cvCoordinator.assignPlayerToLocation(playerIndex: 2, screenPoint: loc)
+                                    showAssignPlayerPopup = false
+                                }
+                                .buttonStyle(AssignPillButtonStyle(color: Color(red: 0.98, green: 0.46, blue: 0.12)))
+                                
+                                Button("B2") {
+                                    cvCoordinator.assignPlayerToLocation(playerIndex: 3, screenPoint: loc)
+                                    showAssignPlayerPopup = false
+                                }
+                                .buttonStyle(AssignPillButtonStyle(color: Color(red: 0.94, green: 0.28, blue: 0.28)))
                             }
                         }
+                        .padding(8)
+                        .background(Color.black.opacity(0.88))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.yellow.opacity(0.8), lineWidth: 1.5)
+                        )
+                        .shadow(color: .black.opacity(0.6), radius: 10)
+                        .position(x: min(max(loc.x, 110), geometry.size.width - 110), y: max(60, loc.y - 55))
+                        .zIndex(45)
                     }
                     
                     // 5. Thẻ Trạng Thái Chưa Quay Liền kèm Nút "BẮT ĐẦU QUAY & TÍNH ĐIỂM"
@@ -460,6 +545,7 @@ public struct LiveMatchContainerView: View {
 
 private struct VectorHUDOverlayView: View {
     let players: [PlayerTrack]
+    var unassignedDetections: [PlayerDetection] = []
     let ballObservation: BallObservation?
     let ballTrajectory: [CGPoint]
     let courtModel: CourtModel
@@ -467,8 +553,28 @@ private struct VectorHUDOverlayView: View {
     
     var body: some View {
         Canvas { context, size in
+            // 0. Vẽ khung người đang chuyển động chưa gán (Unassigned Detected People)
+            for det in unassignedDetections {
+                let box = det.screenBBox
+                guard box.width > 10 && box.height > 10 else { continue }
+                
+                // Khung viền đứt nét màu vàng/trắng
+                let roundedBox = Path(roundedRect: box, cornerRadius: 8)
+                context.stroke(
+                    roundedBox,
+                    with: .color(Color.yellow.opacity(0.65)),
+                    style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])
+                )
+                
+                // Vòng định vị tiếp đất dưới chân
+                let footRect = CGRect(x: det.screenGround.x - 20, y: det.screenGround.y - 8, width: 40, height: 16)
+                context.stroke(Path(ellipseIn: footRect), with: .color(Color.yellow.opacity(0.8)), lineWidth: 1.5)
+                context.fill(Path(ellipseIn: footRect), with: .color(Color.yellow.opacity(0.2)))
+            }
+            
             // 1. Vẽ vòng tròn định vị chân cầu thủ trên mặt sân (Ground Contact Ring)
             for player in players {
+                guard player.isInitializedWithDetection || player.screenBoundingBox != .zero else { continue }
                 let groundScreenPt = player.groundPosition
                 let playerColor = colorForPlayerIndex(player.playerIndex)
                 
@@ -509,12 +615,30 @@ private struct VectorHUDOverlayView: View {
     
     private func colorForPlayerIndex(_ index: Int) -> Color {
         switch index {
-        case 0: return Color(red: 0.22, green: 0.52, blue: 0.98) // Tú
-        case 1: return Color(red: 0.58, green: 0.38, blue: 0.98) // Cường
-        case 2: return Color(red: 0.98, green: 0.46, blue: 0.12) // Nam
-        case 3: return Color(red: 0.94, green: 0.28, blue: 0.28) // Thành
+        case 0: return Color(red: 0.22, green: 0.52, blue: 0.98) // A1
+        case 1: return Color(red: 0.58, green: 0.38, blue: 0.98) // A2
+        case 2: return Color(red: 0.98, green: 0.46, blue: 0.12) // B1
+        case 3: return Color(red: 0.94, green: 0.28, blue: 0.28) // B2
         default: return .white
         }
+    }
+}
+
+// MARK: - Nút Gán Cầu Thủ Nhanh Pill Style
+
+private struct AssignPillButtonStyle: ButtonStyle {
+    let color: Color
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 11, weight: .black))
+            .foregroundColor(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(color)
+            .clipShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .shadow(color: color.opacity(0.5), radius: 4)
     }
 }
 

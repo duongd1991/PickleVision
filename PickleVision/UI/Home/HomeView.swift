@@ -148,7 +148,7 @@ public struct HomeView: View {
                         Circle()
                             .fill(Color.green)
                             .frame(width: 6, height: 6)
-                        Text("version v1.0.3")
+                        Text("version v1.0.4")
                             .font(.system(size: 11, weight: .heavy, design: .monospaced))
                             .foregroundColor(.white.opacity(0.7))
                     }
@@ -301,7 +301,7 @@ private struct AppInfoModalView: View {
                         HStack {
                             Image(systemName: "sparkles")
                                 .foregroundColor(.yellow)
-                            Text("PickleVision v1.0.3")
+                            Text("PickleVision v1.0.4")
                                 .font(.headline.bold())
                                 .foregroundColor(.white)
                         }

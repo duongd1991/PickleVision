@@ -95,6 +95,12 @@ public final class PickleballCVCoordinator: NSObject, ObservableObject {
         }
     }
     
+    /// Gán cầu thủ thủ công vào người đang di chuyển tại điểm chạm trên màn hình
+    @discardableResult
+    public func assignPlayerToLocation(playerIndex: Int, screenPoint: CGPoint) -> Bool {
+        return playerTrackerService.assignPlayer(index: playerIndex, atScreenPoint: screenPoint)
+    }
+    
     // MARK: - Pipeline Processing Entry Point
     
     /// Tiếp nhận khung hình từ CameraManager hoặc Video Data Output

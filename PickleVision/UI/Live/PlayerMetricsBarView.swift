@@ -298,16 +298,25 @@ private struct PlayerCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             
-            // Header: Tên và Đội
-            HStack(spacing: 4) {
+            // Header: Tên nằm NGANG với số mét cả trận, và nhãn Đội
+            HStack(alignment: .center, spacing: 4) {
                 Circle()
                     .fill(playerThemeColor)
                     .frame(width: 7, height: 7)
                 
                 Text(metric.name)
-                    .font(.system(size: 12, weight: .heavy))
+                    .font(.system(size: 13, weight: .heavy))
                     .foregroundColor(.white)
                     .lineLimit(1)
+                
+                // Số mét cả trận nằm NGANG với tên
+                Text("\(Int(metric.totalMatchDistanceMeters))m")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundColor(.yellow)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(Color.yellow.opacity(0.18))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                 
                 Spacer()
                 
@@ -320,21 +329,11 @@ private struct PlayerCardView: View {
                     .clipShape(Capsule())
             }
             
-            // Quãng đường cả trận
-            HStack(alignment: .lastTextBaseline, spacing: 2) {
-                Text(String(format: "%.0f", metric.totalMatchDistanceMeters))
-                    .font(.system(size: 13, weight: .heavy, design: .monospaced))
-                    .foregroundColor(.white)
-                Text("m cả trận")
-                    .font(.system(size: 8.5, weight: .medium))
-                    .foregroundColor(.white.opacity(0.55))
-            }
-            
             // Quãng đường pha hiện tại & Tốc độ tức thời
             HStack(alignment: .lastTextBaseline, spacing: 2) {
                 Text(String(format: "%.1f", metric.rallyDistanceMeters))
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundColor(.yellow)
+                    .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.9))
                 Text("m pha")
                     .font(.system(size: 8, weight: .medium))
                     .foregroundColor(.white.opacity(0.55))
@@ -342,7 +341,7 @@ private struct PlayerCardView: View {
                 Spacer()
                 
                 Text(String(format: "%.0f km/h", metric.currentSpeedKmh))
-                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                    .font(.system(size: 9.5, weight: .heavy, design: .monospaced))
                     .foregroundColor(.cyan)
             }
             

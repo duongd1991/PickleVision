@@ -25,8 +25,8 @@ targets:
       properties:
         CFBundleDisplayName: PickleVision
         CFBundleIdentifier: com.picklevision.app
-        CFBundleShortVersionString: "1.0.3"
-        CFBundleVersion: "5"
+        CFBundleShortVersionString: "1.0.4"
+        CFBundleVersion: "6"
         NSCameraUsageDescription: "PickleVision cần quyền truy cập Camera để phân tích đường bóng và vận động viên Pickleball theo thời gian thực (60/120fps)."
         NSMicrophoneUsageDescription: "PickleVision cần quyền Micro để ghi âm trận đấu khi xuất video highlight."
         NSPhotoLibraryAddUsageDescription: "PickleVision cần quyền lưu video phân tích vào Thư viện ảnh."

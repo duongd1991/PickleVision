@@ -57,22 +57,22 @@ public struct CourtMiniMapView: View {
     // MARK: - Body
     
     public var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 3) {
             // Header tiêu đề Minimap
             HStack {
                 Circle()
                     .fill(Color.green)
-                    .frame(width: 5, height: 5)
+                    .frame(width: 4, height: 4)
                 Text("2D MINIMAP")
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.8))
+                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.85))
                 Spacer()
-                Text("USA-PB 13.4m")
-                    .font(.system(size: 8, weight: .bold))
+                Text("13.4m")
+                    .font(.system(size: 7.5, weight: .bold))
                     .foregroundColor(.white.opacity(0.45))
             }
-            .padding(.horizontal, 8)
-            .padding(.top, 6)
+            .padding(.horizontal, 6)
+            .padding(.top, 4)
             
             // Khung vẽ sân 2D Canvas
             Canvas { context, size in
@@ -207,33 +207,33 @@ public struct CourtMiniMapView: View {
             
             // Footer nhãn phán quyết điểm nảy gần nhất
             if let bounce = data.lastBounceCourt, let verdict = data.lastBounceVerdict {
-                HStack(spacing: 4) {
+                HStack(spacing: 3) {
                     Circle()
                         .fill(verdict.isFaultOrOut ? Color.red : Color.green)
-                        .frame(width: 6, height: 6)
+                        .frame(width: 5, height: 5)
                     Text(verdict.rawValue)
-                        .font(.system(size: 9, weight: .black))
+                        .font(.system(size: 8, weight: .black))
                         .foregroundColor(verdict.isFaultOrOut ? .red : .green)
                         .lineLimit(1)
                     Spacer()
-                    Text(String(format: "(%.1f, %.1f)m", bounce.x, bounce.y))
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    Text(String(format: "%.1fm", bounce.y))
+                        .font(.system(size: 7.5, weight: .bold, design: .monospaced))
                         .foregroundColor(.white.opacity(0.6))
                 }
-                .padding(.horizontal, 8)
-                .padding(.bottom, 6)
+                .padding(.horizontal, 6)
+                .padding(.bottom, 4)
             }
         }
-        .frame(width: 140, height: 210)
+        .frame(width: 108, height: 160)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(.ultraThinMaterial.opacity(0.88))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .stroke(Color.white.opacity(0.2), lineWidth: 1)
                 )
         )
-        .shadow(color: .black.opacity(0.35), radius: 10, x: 0, y: 5)
+        .shadow(color: .black.opacity(0.35), radius: 8, x: 0, y: 4)
     }
     
     // MARK: - Color Palette for 4 Players

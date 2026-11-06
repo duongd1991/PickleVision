@@ -73,6 +73,7 @@ public final class PlayerTrackerService: PlayerTracking, ObservableObject {
     // MARK: - Properties
     
     @Published public private(set) var activeTracks: [PlayerTrack] = []
+    @Published public private(set) var latestDetections: [PlayerDetection] = []
     
     private let visionHandler = VNSequenceRequestHandler()
     private var lastProcessTimestamp: TimeInterval = 0.0
@@ -81,7 +82,7 @@ public final class PlayerTrackerService: PlayerTracking, ObservableObject {
     // Ngưỡng phát hiện khớp xương cổ chân
     public let minJointConfidence: Float = 0.30
     // Ngưỡng chi phí liên kết ByteTrack (mét trên mặt sân)
-    public let maxAssociationDistanceMeters: Float = 3.0
+    public let maxAssociationDistanceMeters: Float = 4.5
     // Trọng số chi phí không gian vs màu sắc Re-ID
     public let distanceWeight: Float = 0.65
     public let colorWeight: Float = 0.35
@@ -91,7 +92,7 @@ public final class PlayerTrackerService: PlayerTracking, ObservableObject {
     }
     
     /// Khởi tạo 4 cầu thủ mặc định cho trận đánh đôi
-    public func initializeDefaultPlayers(names: [String] = ["Tú", "Cường", "Nam", "Thành"]) {
+    public func initializeDefaultPlayers(names: [String] = ["A1", "A2", "B1", "B2"]) {
         activeTracks.removeAll()
         
         let initialPositions: [(team: PlayerTeam, pos: CGPoint)] = [
@@ -204,6 +205,8 @@ public final class PlayerTrackerService: PlayerTracking, ObservableObject {
                 colorHist: colorHist
             ))
         }
+        
+        self.latestDetections = detections
         
         // 3. Liên kết ByteTrack 2 tầng (High-Confidence và Low-Confidence)
         associateDetectionsToTracks(detections: detections, timestamp: timestamp, dt: dt)
@@ -426,6 +429,36 @@ public final class PlayerTrackerService: PlayerTracking, ObservableObject {
             }
         }
         
+        // 4. BOOTSTRAP AUTO-ASSOCIATION: Tự động gán người chuyển động mới vào các track chưa khởi tạo
+        for (dIdx, det) in detections.enumerated() {
+            guard !matchedDetectionIndices.contains(dIdx) else { continue }
+            
+            // Tìm track chưa từng khởi tạo hoặc mất track trong cùng nửa sân
+            let isNearCourt = det.courtPosition.y < 6.7056
+            var candidateIndices = isNearCourt ? [0, 1] : [2, 3]
+            // Ưu tiên theo bên trái / phải của sân
+            if det.courtPosition.x > 3.048 {
+                candidateIndices.reverse()
+            }
+            
+            for candidateIdx in candidateIndices {
+                guard candidateIdx < activeTracks.count else { continue }
+                let candTrack = activeTracks[candidateIdx]
+                if !matchedTrackIndices.contains(candidateIdx) && (!candTrack.isInitializedWithDetection || candTrack.confidence < 0.25) {
+                    matchedTrackIndices.insert(candidateIdx)
+                    matchedDetectionIndices.insert(dIdx)
+                    candTrack.forceAssign(
+                        rawCourtPosition: det.courtPosition,
+                        boundingBox: det.screenBBox,
+                        leftAnkle: det.leftAnkle,
+                        rightAnkle: det.rightAnkle,
+                        colorHistogram: det.colorHist
+                    )
+                    break
+                }
+            }
+        }
+        
         // Với các track chưa ghép được: giữ nguyên vị trí mượt từ Kalman prediction
         for (tIdx, track) in activeTracks.enumerated() {
             if !matchedTrackIndices.contains(tIdx) {
@@ -434,6 +467,41 @@ public final class PlayerTrackerService: PlayerTracking, ObservableObject {
                 track.confidence = min(1.0, track.confidence + 0.1)
             }
         }
+    }
+    
+    // MARK: - Thủ Công Gán Cầu Thủ Khi Chạm Vào Màn Hình
+    
+    /// Gán cầu thủ index vào người đang di chuyển tại tọa độ pixel màn hình
+    public func assignPlayer(index: Int, atScreenPoint point: CGPoint) -> Bool {
+        guard index >= 0 && index < activeTracks.count else { return false }
+        
+        var bestDet: PlayerDetection? = nil
+        var minDist: CGFloat = 100.0 // Bán kính chạm rộng 100pt
+        
+        for det in latestDetections {
+            let expandedBox = det.screenBBox.insetBy(dx: -30, dy: -30)
+            if expandedBox.contains(point) {
+                bestDet = det
+                break
+            }
+            let d = hypot(det.screenGround.x - point.x, det.screenGround.y - point.y)
+            if d < minDist {
+                minDist = d
+                bestDet = det
+            }
+        }
+        
+        guard let targetDet = bestDet else { return false }
+        
+        let track = activeTracks[index]
+        track.forceAssign(
+            rawCourtPosition: targetDet.courtPosition,
+            boundingBox: targetDet.screenBBox,
+            leftAnkle: targetDet.leftAnkle,
+            rightAnkle: targetDet.rightAnkle,
+            colorHistogram: targetDet.colorHist
+        )
+        return true
     }
     
     // MARK: - Reset State

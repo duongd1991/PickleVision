@@ -190,6 +190,7 @@ public final class PlayerTrack: Identifiable, ObservableObject {
     public var confidence: Float = 1.0
     public var isTracking: Bool = true
     public var lastUpdateTime: TimeInterval = 0.0
+    public var isInitializedWithDetection: Bool = false
     
     // Bộ lọc Kalman 2D tích hợp
     public let kalmanFilter: KalmanFilter2D
@@ -231,6 +232,40 @@ public final class PlayerTrack: Identifiable, ObservableObject {
     
     // MARK: - Cập Nhật Vị Trí & Tích Lũy Quãng Đường
     
+    /// Gán cưỡng bức vị trí cầu thủ (dùng khi người dùng chạm gán thủ công hoặc bootstrap phát hiện đầu tiên)
+    public func forceAssign(
+        rawCourtPosition: CGPoint,
+        boundingBox: CGRect,
+        leftAnkle: CGPoint? = nil,
+        rightAnkle: CGPoint? = nil,
+        colorHistogram: [Float] = []
+    ) {
+        self.currentCourtPosition = rawCourtPosition
+        self.smoothedCourtPosition = rawCourtPosition
+        self.screenBoundingBox = boundingBox
+        self.ankleLeft = leftAnkle
+        self.ankleRight = rightAnkle
+        
+        if let l = leftAnkle, let r = rightAnkle {
+            self.groundPosition = CGPoint(x: (l.x + r.x) / 2.0, y: (l.y + r.y) / 2.0)
+        } else if let l = leftAnkle {
+            self.groundPosition = l
+        } else if let r = rightAnkle {
+            self.groundPosition = r
+        } else {
+            self.groundPosition = CGPoint(x: boundingBox.midX, y: boundingBox.maxY)
+        }
+        
+        if !colorHistogram.isEmpty {
+            self.jerseyColorHistogram = colorHistogram
+        }
+        
+        self.kalmanFilter.reset(to: rawCourtPosition)
+        self.isInitializedWithDetection = true
+        self.isTracking = true
+        self.confidence = 1.0
+    }
+    
     /// Cập nhật tọa độ phát hiện mới, lọc rung lắc Jitter và cập nhật quãng đường
     public func update(
         rawCourtPosition: CGPoint,
@@ -240,6 +275,19 @@ public final class PlayerTrack: Identifiable, ObservableObject {
         rightAnkle: CGPoint?,
         colorHistogram: [Float] = []
     ) {
+        // Nếu đây là lần đầu tiên nhận diện người thật, khởi tạo trực tiếp mà không bị chặn bởi Pre-Gating
+        if !isInitializedWithDetection {
+            forceAssign(
+                rawCourtPosition: rawCourtPosition,
+                boundingBox: boundingBox,
+                leftAnkle: leftAnkle,
+                rightAnkle: rightAnkle,
+                colorHistogram: colorHistogram
+            )
+            lastUpdateTime = timestamp
+            return
+        }
+        
         let dt = lastUpdateTime > 0 ? (timestamp - lastUpdateTime) : (1.0 / 60.0)
         lastUpdateTime = timestamp
         
