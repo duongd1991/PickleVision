@@ -43,8 +43,14 @@ jobs:
           if [ $BUILD_EXIT_CODE -ne 0 ]; then
             echo "==================== BUILD FAILED ===================="
             echo "Printing compilation errors found in xcodebuild.log:"
-            grep -E "error:|fatal error:" xcodebuild.log || tail -n 60 xcodebuild.log
+            grep -E "error:|fatal error:" xcodebuild.log || tail -n 80 xcodebuild.log
             echo "======================================================"
+            
+            echo "### ❌ Xcodebuild Build Errors" >> $GITHUB_STEP_SUMMARY
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            (grep -E "error:|fatal error:" xcodebuild.log || tail -n 80 xcodebuild.log) >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            
             exit $BUILD_EXIT_CODE
           fi
           set -e
@@ -62,7 +68,16 @@ jobs:
           zip -r PickleVision.ipa Payload
           echo "IPA packaging completed successfully."
 
+      - name: Upload Build Log (Always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: "**/xcodebuild.log"
+          if-no-files-found: ignore
+
       - name: Upload IPA Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: PickleVision-iOS-IPA
