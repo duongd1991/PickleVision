@@ -1,0 +1,24 @@
+- **Current Status**: Đã hoàn thành 100% nhiệm vụ kiểm chứng đối kháng và báo cáo handoff.md, đang gửi thông điệp cho Orchestrator.
+- **Last visited**: 2026-11-05T10:51:30Z
+
+## Checklist
+- [x] Nhận lệnh dispatch và khởi tạo BRIEFING.md / progress.md
+- [x] Đọc các tài liệu đặc tả bắt buộc:
+  - [x] ORIGINAL_REQUEST.md
+  - [x] pickleball_app_specification.md
+  - [x] PROJECT.md
+  - [x] TEST_READY.md
+- [x] Chạy `python PickleVision\test_runner.py` để kiểm tra bộ test gốc của dự án (162/162 passed)
+- [x] Thiết kế và chạy thực nghiệm đối kháng 1: Player Distance & Jitter Filter
+  - [x] 100 frames rung giật ngẫu nhiên $\Delta d \in [0.001, 0.049]$m khi đứng yên $\to$ phát hiện rò rỉ 26-30% trên Swift Kalman 4x4 do Velocity Overshoot
+  - [x] Bước nhảy ảo teleportation glitch $> 10.5$ m/s $\to$ phát hiện lỗi tê liệt bám vết (Post-Glitch Tracking Paralysis) do ô nhiễm trạng thái Kalman trước khi kiểm tra tốc độ sinh lý
+- [x] Thiết kế và chạy thực nghiệm đối kháng 2: Ball Tracker & Parabola Fit
+  - [x] Thử nghiệm bóng bay vận tốc cao (30 km/h - 125 km/h) & nảy đột ngột (ĐẠT)
+  - [x] Gia tốc đứng $d^2y/dt^2 > 0$ phát hiện chính xác thời điểm nảy (Bounce) (ĐẠT)
+  - [x] Đánh giá độ nhạy số học Parabola dưới nhiễu sub-pixel với cửa sổ 12 frames
+- [x] Thiết kế và chạy thực nghiệm đối kháng 3: RallyEngine State Machine
+  - [x] Vòng lặp Side-out rotation (Đánh đôi 0-0-2 $\to$ 4-2-1 và Đánh đơn) (ĐẠT)
+  - [x] Nảy 2 lần trên cùng một nửa sân (double bounce detection: Near & Far) (ĐẠT)
+- [x] Tổng hợp kết quả, cập nhật BRIEFING.md
+- [x] Viết `handoff.md` theo chuẩn 5 thành phần
+- [x] Gửi thông điệp phán quyết `REQUEST_CHANGES` qua `send_message`
