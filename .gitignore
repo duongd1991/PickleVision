@@ -10,3 +10,5 @@ DerivedData/
 
 __pycache__/
 *.pyc
+PickleVision/bin/
+_build_tmp/

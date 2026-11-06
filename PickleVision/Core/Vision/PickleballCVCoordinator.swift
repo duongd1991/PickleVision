@@ -31,6 +31,7 @@ public final class PickleballCVCoordinator: NSObject, ObservableObject {
     @Published public private(set) var latestVerdict: InOutVerdict?
     @Published public private(set) var lastBounceObservation: BallObservation?
     @Published public private(set) var currentCourtModel: CourtModel = CourtModel()
+    @Published public var isRecordingActive: Bool = false
     
     private let processingQueue = DispatchQueue(label: "com.picklevision.cv.pipeline", qos: .userInteractive)
     private var isProcessingFrame = false
@@ -123,26 +124,29 @@ public final class PickleballCVCoordinator: NSObject, ObservableObject {
             // 3. Cập nhật Ball Tracking (Trừ nền 3 frame + Màu vàng neon + Quỹ đạo parabol)
             let ballObservation = self.ballTrackerService.update(with: pixelBuffer, timestamp: pts, homography: activeHomography)
             
-            // Tăng số lượt đổi hướng: Khi bóng vượt qua mặt phẳng lưới (Y = 6.7056m)
-            if let ball = ballObservation {
-                let currentY = Double(ball.courtPosition3D.y)
-                let netY = CourtDimensions.netY
-                if let lastY = self.previousBallCourtY {
-                    if (lastY < netY && currentY >= netY) || (lastY > netY && currentY <= netY) {
-                        self.shotsInRally += 1
-                        self.rallyEngine.registerShotExchange()
+            // Chỉ kích hoạt đếm nhịp, phán quyết điểm nảy In/Out khi đang trong chế độ QUAY THI ĐẤU
+            if self.isRecordingActive {
+                // Tăng số lượt đổi hướng: Khi bóng vượt qua mặt phẳng lưới (Y = 6.7056m)
+                if let ball = ballObservation {
+                    let currentY = Double(ball.courtPosition3D.y)
+                    let netY = CourtDimensions.netY
+                    if let lastY = self.previousBallCourtY {
+                        if (lastY < netY && currentY >= netY) || (lastY > netY && currentY <= netY) {
+                            self.shotsInRally += 1
+                            self.rallyEngine.registerShotExchange()
+                        }
                     }
+                    self.previousBallCourtY = currentY
                 }
-                self.previousBallCourtY = currentY
+                
+                // 4. Xử lý sự kiện điểm nảy (Bounce) & Ra phán quyết In/Out tự động
+                if let ball = ballObservation, ball.isBounce {
+                    self.handleDetectedBounce(ball: ball)
+                }
+                
+                // 5. Kiểm tra lỗi vô-lê trong khu vực Bếp (Kitchen Volley Check)
+                self.checkKitchenVolleyFault(players: updatedPlayers, ball: ballObservation)
             }
-            
-            // 4. Xử lý sự kiện điểm nảy (Bounce) & Ra phán quyết In/Out tự động
-            if let ball = ballObservation, ball.isBounce {
-                self.handleDetectedBounce(ball: ball)
-            }
-            
-            // 5. Kiểm tra lỗi vô-lê trong khu vực Bếp (Kitchen Volley Check)
-            self.checkKitchenVolleyFault(players: updatedPlayers, ball: ballObservation)
             
             // 6. Tổng hợp dữ liệu viễn trắc (Rally Telemetry) và cập nhật lên Main Thread
             self.updateTelemetry(players: updatedPlayers, ball: ballObservation, timestamp: pts)

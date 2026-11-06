@@ -9,6 +9,14 @@
 import SwiftUI
 import AVFoundation
 
+/// Trạng thái luồng điều hướng màn hình chính của PickleVision
+public enum AppFlowScreen {
+    case home
+    case playerSetup
+    case courtCalibration
+    case liveMatch
+}
+
 @main
 struct PickleVisionApp: App {
     
@@ -20,6 +28,14 @@ struct PickleVisionApp: App {
     /// Bộ quản lý camera thu nhận video 1080p @ 60/120fps
     @StateObject private var cameraManager = CameraManager()
     
+    // MARK: - App Navigation States
+    
+    @State private var currentScreen: AppFlowScreen = .home
+    @State private var currentFrameBuffer: CVPixelBuffer?
+    @State private var playerNames: [String] = ["Tú", "Cường", "Nam", "Thành"]
+    @State private var initialServerIndex: Int = 0
+    @State private var calibratedCorners: [CGPoint] = CourtCalibrationSetupView.default10Points
+    
     // MARK: - App Lifecycle
     
     init() {
@@ -28,19 +44,93 @@ struct PickleVisionApp: App {
     
     var body: some Scene {
         WindowGroup {
-            LiveMatchContainerView()
-                .environmentObject(cvCoordinator)
-                .environmentObject(cvCoordinator.rallyEngine)
-                .environmentObject(cvCoordinator.courtCalibrationService)
-                .environmentObject(cameraManager)
-                .preferredColorScheme(.dark)
-                .onAppear {
-                    setupCameraAndPipeline()
+            ZStack {
+                switch currentScreen {
+                case .home:
+                    HomeView(
+                        onStartTapped: {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                currentScreen = .playerSetup
+                            }
+                        }
+                    )
+                    .transition(.opacity)
+                    
+                case .playerSetup:
+                    MatchSetupView(
+                        initialNames: playerNames,
+                        initialServerIndex: initialServerIndex,
+                        onBack: {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                currentScreen = .home
+                            }
+                        },
+                        onNext: { names, server in
+                            self.playerNames = names
+                            self.initialServerIndex = server
+                            self.cvCoordinator.setAllPlayerNames(names)
+                            self.cvCoordinator.currentTelemetry.serverIndex = server
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                currentScreen = .courtCalibration
+                            }
+                        }
+                    )
+                    .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+                    
+                case .courtCalibration:
+                    CourtCalibrationSetupView(
+                        currentFrameBuffer: $currentFrameBuffer,
+                        initialCorners: calibratedCorners,
+                        onBack: {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                currentScreen = .playerSetup
+                            }
+                        },
+                        onNext: { corners in
+                            self.calibratedCorners = corners
+                            self.applyCourtCalibration(corners: corners)
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                currentScreen = .liveMatch
+                            }
+                        }
+                    )
+                    .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+                    
+                case .liveMatch:
+                    LiveMatchContainerView(
+                        onExitToHome: {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                currentScreen = .home
+                            }
+                        }
+                    )
+                    .transition(.opacity)
                 }
+            }
+            .environmentObject(cvCoordinator)
+            .environmentObject(cvCoordinator.rallyEngine)
+            .environmentObject(cvCoordinator.courtCalibrationService)
+            .environmentObject(cameraManager)
+            .preferredColorScheme(.dark)
+            .onAppear {
+                setupCameraAndPipeline()
+            }
+            .onReceive(cameraManager.framePublisher) { frame in
+                self.currentFrameBuffer = frame.pixelBuffer
+            }
         }
     }
     
     // MARK: - Configuration Helpers
+    
+    private func applyCourtCalibration(corners: [CGPoint]) {
+        guard corners.count >= 4 else { return }
+        let pixelCorners = corners.map { CGPoint(x: $0.x * 1920.0, y: $0.y * 1080.0) }
+        _ = cvCoordinator.courtCalibrationService.calibrate(withPixelCorners: pixelCorners)
+        if let h = cvCoordinator.courtCalibrationService.homographyMatrix {
+            cvCoordinator.updateCourtHomography(h)
+        }
+    }
     
     /// Cấu hình AVAudioSession để không xung đột với thu nhận video tốc độ cao
     private func configureAudioVideoSession() {

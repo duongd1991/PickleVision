@@ -150,6 +150,21 @@ class CourtCalibrationService:
         if world_points is not None:
             world_pts = world_points
             active_corners = corners[:len(world_pts)]
+        elif len(corners) >= 10:
+            # Hỗ trợ DLT 10 điểm (4 góc sân + 4 điểm bếp + 2 điểm cột lưới)
+            world_pts = [
+                (0.0000, 0.0000),                     # 1. Near-Left Baseline
+                (COURT_WIDTH, 0.0000),                # 2. Near-Right Baseline
+                (COURT_WIDTH, COURT_LENGTH),          # 3. Far-Right Baseline
+                (0.0000, COURT_LENGTH),               # 4. Far-Left Baseline
+                (0.0000, NEAR_NVZ_Y),                 # 5. Near-NVZ Left
+                (COURT_WIDTH, NEAR_NVZ_Y),            # 6. Near-NVZ Right
+                (COURT_WIDTH, FAR_NVZ_Y),             # 7. Far-NVZ Right
+                (0.0000, FAR_NVZ_Y),                  # 8. Far-NVZ Left
+                (0.0000, NET_Y),                      # 9. Net Left Post
+                (COURT_WIDTH, NET_Y)                  # 10. Net Right Post
+            ]
+            active_corners = corners[:10]
         elif len(corners) >= 6:
             # Hỗ trợ DLT 6 điểm (4 góc sân + 2 điểm chốt vạch bếp Near-NVZ)
             world_pts = [
@@ -756,7 +771,42 @@ def run_all_tests():
     rmse_6pt_noise = calib_6pt_noise.compute_reprojection_error(six_pairs)
     print(f"   [PROOF] RMSE 6 điểm DLT khi có nhiễu sub-pixel ±0.35px = {rmse_6pt_noise:.6f} mét (< 0.02m: True)")
     res.assert_less_than(rmse_6pt_noise, 0.02, "6-point DLT RMSE under sub-pixel noise must remain < 0.02m")
-    print("   [PASS] testSixPointDLTHomographyCalibration_MaintainsRMSEUnderTwoCentimeters passed\n")
+    print("   [PASS] testSixPointDLTHomographyCalibration_MaintainsRMSEUnderTwoCentimeters passed")
+
+    # 1.8 10-point DLT Calibration (4 Outer Corners + 4 Kitchen Points + 2 Net Posts)
+    ten_world_pts = [
+        (0.0000, 0.0000),                     # 1. Near-Left Baseline
+        (COURT_WIDTH, 0.0000),                # 2. Near-Right Baseline
+        (COURT_WIDTH, COURT_LENGTH),          # 3. Far-Right Baseline
+        (0.0000, COURT_LENGTH),               # 4. Far-Left Baseline
+        (0.0000, NEAR_NVZ_Y),                 # 5. Near-NVZ Left
+        (COURT_WIDTH, NEAR_NVZ_Y),            # 6. Near-NVZ Right
+        (COURT_WIDTH, FAR_NVZ_Y),             # 7. Far-NVZ Right
+        (0.0000, FAR_NVZ_Y),                  # 8. Far-NVZ Left
+        (0.0000, NET_Y),                      # 9. Net Left Post
+        (COURT_WIDTH, NET_Y)                  # 10. Net Right Post
+    ]
+    ten_pixel_pts = [calib.court_to_pixel(p) for p in ten_world_pts]
+    calib_10pt = CourtCalibrationService()
+    ok_10pt = calib_10pt.calibrate(ten_pixel_pts)
+    res.assert_true(ok_10pt, "10-point DLT calibration must succeed")
+    ten_pairs = [(ten_pixel_pts[i], ten_world_pts[i]) for i in range(10)]
+    rmse_10pt = calib_10pt.compute_reprojection_error(ten_pairs)
+    print(f"   [PROOF] RMSE trên 10 điểm chốt DLT (4 góc + 4 bếp + 2 lưới) = {rmse_10pt:.6f} mét (< 0.02m: True)")
+    res.assert_less_than(rmse_10pt, 0.02, "10-point DLT RMSE must be < 0.02m")
+
+    # 10-point DLT under sub-pixel noise ±0.35px
+    ten_noisy_px = [
+        (ten_pixel_pts[i][0] + (0.35 if i % 2 == 0 else -0.35),
+         ten_pixel_pts[i][1] + (-0.35 if i % 2 == 0 else 0.35))
+        for i in range(10)
+    ]
+    calib_10pt_noise = CourtCalibrationService()
+    calib_10pt_noise.calibrate(ten_noisy_px)
+    rmse_10pt_noise = calib_10pt_noise.compute_reprojection_error(ten_pairs)
+    print(f"   [PROOF] RMSE 10 điểm DLT khi có nhiễu sub-pixel ±0.35px = {rmse_10pt_noise:.6f} mét (< 0.02m: True)")
+    res.assert_less_than(rmse_10pt_noise, 0.02, "10-point DLT RMSE under sub-pixel noise must remain < 0.02m")
+    print("   [PASS] testTenPointDLTHomographyCalibration_MaintainsRMSEUnderTwoCentimeters passed\n")
 
     # --------------------------------------------------------------------------
     # SUITE 2: InOutRulesTests

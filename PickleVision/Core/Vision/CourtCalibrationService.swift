@@ -60,15 +60,21 @@ public final class CourtCalibrationService: CourtCalibrating, ObservableObject {
     
     // MARK: - Public Calibration Method
     
-    /// Hiệu chuẩn sân từ 4 điểm chốt góc trên màn hình người dùng chạm vào:
-    /// Thứ tự 4 góc:
-    /// 1. Near-Left Baseline: (0.0000, 0.0000)
-    /// 2. Near-Right Baseline: (6.0960, 0.0000)
-    /// 3. Far-Right Baseline: (6.0960, 13.4112)
-    /// 4. Far-Left Baseline: (0.0000, 13.4112)
-    /// Bổ sung cho DLT 6 điểm (Hỗ trợ camera góc thấp 1.8m, giảm sai số RMSE < 0.02m):
-    /// 5. Near-NVZ Left: (0.0000, 4.5720)
-    /// 6. Near-NVZ Right: (6.0960, 4.5720)
+    /// Hiệu chuẩn sân từ các điểm chốt mốc trên khung hình (Hỗ trợ 10 điểm, 6 điểm hoặc 4 điểm):
+    /// Thứ tự 10 điểm hiệu chuẩn:
+    /// - 4 góc sân ngoài:
+    ///   1. Near-Left Baseline: (0.0000, 0.0000)
+    ///   2. Near-Right Baseline: (6.0960, 0.0000)
+    ///   3. Far-Right Baseline: (6.0960, 13.4112)
+    ///   4. Far-Left Baseline: (0.0000, 13.4112)
+    /// - 4 điểm vạch bếp (Non-Volley Zone):
+    ///   5. Near-Kitchen Left: (0.0000, 4.5720)
+    ///   6. Near-Kitchen Right: (6.0960, 4.5720)
+    ///   7. Far-Kitchen Right: (6.0960, 8.8392)
+    ///   8. Far-Kitchen Left: (0.0000, 8.8392)
+    /// - 2 điểm chân cột lưới (Net Posts):
+    ///   9. Net Left Post: (0.0000, 6.7056)
+    ///   10. Net Right Post: (6.0960, 6.7056)
     public func calibrate(withPixelCorners corners: [CGPoint]) -> Result<simd_float3x3, CalibrationError> {
         guard corners.count >= 4 else {
             return .failure(.invalidPointCount(expected: 4, actual: corners.count))
@@ -77,24 +83,39 @@ public final class CourtCalibrationService: CourtCalibrating, ObservableObject {
         let worldPoints: [CGPoint]
         let inputPoints: [CGPoint]
         
-        if corners.count >= 6 {
+        if corners.count >= 10 {
+            // Hỗ trợ DLT 10 điểm (4 góc sân + 4 điểm vạch bếp + 2 điểm cột lưới)
+            worldPoints = [
+                CGPoint(x: 0.0000, y: 0.0000),                               // 1. Near-Left Baseline
+                CGPoint(x: CourtDimensions.width, y: 0.0000),                 // 2. Near-Right Baseline
+                CGPoint(x: CourtDimensions.width, y: CourtDimensions.length), // 3. Far-Right Baseline
+                CGPoint(x: 0.0000, y: CourtDimensions.length),                // 4. Far-Left Baseline
+                CGPoint(x: 0.0000, y: CourtDimensions.nearNVZY),              // 5. Near-NVZ Left
+                CGPoint(x: CourtDimensions.width, y: CourtDimensions.nearNVZY),// 6. Near-NVZ Right
+                CGPoint(x: CourtDimensions.width, y: CourtDimensions.farNVZY), // 7. Far-NVZ Right
+                CGPoint(x: 0.0000, y: CourtDimensions.farNVZY),               // 8. Far-NVZ Left
+                CGPoint(x: 0.0000, y: CourtDimensions.netY),                  // 9. Net Left Post
+                CGPoint(x: CourtDimensions.width, y: CourtDimensions.netY)    // 10. Net Right Post
+            ]
+            inputPoints = Array(corners.prefix(10))
+        } else if corners.count >= 6 {
             // Hỗ trợ DLT 6 điểm (4 góc sân + 2 điểm vạch bếp Near-NVZ)
             worldPoints = [
-                CGPoint(x: 0.0000, y: 0.0000),                     // Near-Left
-                CGPoint(x: CourtDimensions.width, y: 0.0000),       // Near-Right
+                CGPoint(x: 0.0000, y: 0.0000),                               // Near-Left
+                CGPoint(x: CourtDimensions.width, y: 0.0000),                 // Near-Right
                 CGPoint(x: CourtDimensions.width, y: CourtDimensions.length), // Far-Right
-                CGPoint(x: 0.0000, y: CourtDimensions.length),      // Far-Left
-                CGPoint(x: 0.0000, y: CourtDimensions.nearNVZY),    // Near-NVZ Left
+                CGPoint(x: 0.0000, y: CourtDimensions.length),                // Far-Left
+                CGPoint(x: 0.0000, y: CourtDimensions.nearNVZY),              // Near-NVZ Left
                 CGPoint(x: CourtDimensions.width, y: CourtDimensions.nearNVZY) // Near-NVZ Right
             ]
             inputPoints = Array(corners.prefix(6))
         } else {
             // 4 điểm góc sân truyền thống
             worldPoints = [
-                CGPoint(x: 0.0000, y: 0.0000),                     // Near-Left
-                CGPoint(x: CourtDimensions.width, y: 0.0000),       // Near-Right
+                CGPoint(x: 0.0000, y: 0.0000),                               // Near-Left
+                CGPoint(x: CourtDimensions.width, y: 0.0000),                 // Near-Right
                 CGPoint(x: CourtDimensions.width, y: CourtDimensions.length), // Far-Right
-                CGPoint(x: 0.0000, y: CourtDimensions.length)       // Far-Left
+                CGPoint(x: 0.0000, y: CourtDimensions.length)                // Far-Left
             ]
             inputPoints = Array(corners.prefix(4))
         }

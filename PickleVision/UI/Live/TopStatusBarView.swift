@@ -20,7 +20,9 @@ public struct TopStatusBarView: View {
     public let rallyState: RallyState
     public let matchScore: MatchScore
     public var isCalibrated: Bool = true
+    public var isRecording: Bool = true
     public var onCalibrationTapped: (() -> Void)? = nil
+    public var onHomeTapped: (() -> Void)? = nil
     
     public init(
         rallyDuration: TimeInterval,
@@ -30,7 +32,9 @@ public struct TopStatusBarView: View {
         rallyState: RallyState,
         matchScore: MatchScore = MatchScore(),
         isCalibrated: Bool = true,
-        onCalibrationTapped: (() -> Void)? = nil
+        isRecording: Bool = true,
+        onCalibrationTapped: (() -> Void)? = nil,
+        onHomeTapped: (() -> Void)? = nil
     ) {
         self.rallyDuration = rallyDuration
         self.rallyIndex = rallyIndex
@@ -39,7 +43,9 @@ public struct TopStatusBarView: View {
         self.rallyState = rallyState
         self.matchScore = matchScore
         self.isCalibrated = isCalibrated
+        self.isRecording = isRecording
         self.onCalibrationTapped = onCalibrationTapped
+        self.onHomeTapped = onHomeTapped
     }
     
     // MARK: - Formatters
@@ -62,6 +68,23 @@ public struct TopStatusBarView: View {
     
     public var body: some View {
         HStack(spacing: 6) {
+            
+            // 0. Nút Home quay về trang chủ
+            if let onHome = onHomeTapped {
+                Button(action: onHome) {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.white.opacity(0.85))
+                        .padding(5)
+                        .background(Color.white.opacity(0.14))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                
+                Divider()
+                    .frame(height: 16)
+                    .background(Color.white.opacity(0.2))
+            }
             
             // 1. Tỷ số trận đấu (Side-out score)
             ScoreBoardBadge(score: matchScore)
@@ -143,11 +166,11 @@ public struct TopStatusBarView: View {
             .buttonStyle(.plain)
             
             // 6. Trạng thái trực tiếp của trận đấu
-            LiveRallyStatePill(state: rallyState)
+            LiveRallyStatePill(state: rallyState, isRecording: isRecording)
             
-            // Badge phiên bản v1.2
-            Text("v1.2")
-                .font(.system(size: 8, weight: .heavy))
+            // Badge phiên bản v1.0.0
+            Text("v1.0.0")
+                .font(.system(size: 8, weight: .heavy, design: .monospaced))
                 .foregroundColor(.yellow)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2.5)
@@ -227,10 +250,15 @@ private struct MetricPill: View {
 
 private struct LiveRallyStatePill: View {
     let state: RallyState
+    var isRecording: Bool = true
     
     @State private var isPulsing: Bool = false
     
     private var pillConfig: (text: String, color: Color, isLive: Bool) {
+        if !isRecording {
+            return ("CHƯA QUAY", Color.orange, false)
+        }
+        
         switch state {
         case .waitingForServe:
             return ("CHỜ GIAO", Color(red: 0.25, green: 0.6, blue: 1.0), false)

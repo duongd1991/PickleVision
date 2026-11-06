@@ -24,12 +24,7 @@ public struct LiveMatchContainerView: View {
     
     @State private var currentFrameBuffer: CVPixelBuffer?
     @State private var interactionMode: CameraPreviewInteractionMode = .livePlayback
-    @State private var calibrationCorners: [CGPoint] = [
-        CGPoint(x: 0.15, y: 0.85), // Near-Left
-        CGPoint(x: 0.85, y: 0.85), // Near-Right
-        CGPoint(x: 0.70, y: 0.28), // Far-Right
-        CGPoint(x: 0.30, y: 0.28)  // Far-Left
-    ]
+    @State private var calibrationCorners: [CGPoint] = CourtCalibrationSetupView.default10Points
     
     @State private var showMinimap: Bool = true
     @State private var showPlayerMetrics: Bool = true
@@ -42,12 +37,20 @@ public struct LiveMatchContainerView: View {
     @State private var showMatchSummarySheet: Bool = false
     @State private var showPlayerEditSheet: Bool = false
     
+    // Trạng thái Ghi hình: Mới vào ứng dụng là CHƯA QUAY LIỀN!
+    @State private var isMatchRecording: Bool = false
+    @State private var showEndMatchConfirmAlert: Bool = false
+    
+    public var onExitToHome: (() -> Void)? = nil
+    
     private var isCalibrating: Bool {
         if case .courtCalibration = interactionMode { return true }
         return false
     }
     
-    public init() {}
+    public init(onExitToHome: (() -> Void)? = nil) {
+        self.onExitToHome = onExitToHome
+    }
     
     // MARK: - Body
     
@@ -75,12 +78,7 @@ public struct LiveMatchContainerView: View {
                         }(),
                         viewSize: geometry.size,
                         onReset: {
-                            calibrationCorners = [
-                                CGPoint(x: 0.15, y: 0.85),
-                                CGPoint(x: 0.85, y: 0.85),
-                                CGPoint(x: 0.70, y: 0.28),
-                                CGPoint(x: 0.30, y: 0.28)
-                            ]
+                            calibrationCorners = CourtCalibrationSetupView.default10Points
                         },
                         onDone: {
                             applyCalibration(normalizedCorners: calibrationCorners, viewSize: geometry.size)
@@ -114,9 +112,17 @@ public struct LiveMatchContainerView: View {
                             rallyState: cvCoordinator.currentTelemetry.state,
                             matchScore: cvCoordinator.currentTelemetry.currentScore,
                             isCalibrated: calibrationService.isCalibrated,
+                            isRecording: isMatchRecording,
                             onCalibrationTapped: {
                                 withAnimation(.spring()) {
                                     interactionMode = .courtCalibration(selectedCornerIndex: 0)
+                                }
+                            },
+                            onHomeTapped: {
+                                if isMatchRecording {
+                                    showEndMatchConfirmAlert = true
+                                } else {
+                                    onExitToHome?()
                                 }
                             }
                         )
@@ -166,9 +172,83 @@ public struct LiveMatchContainerView: View {
                             }
                         }
                     }
+                    
+                    // 5. Thẻ Trạng Thái Chưa Quay Liền kèm Nút "BẮT ĐẦU QUAY & TÍNH ĐIỂM"
+                    if !isMatchRecording {
+                        VStack(spacing: 10) {
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(Color.orange)
+                                    .frame(width: 8, height: 8)
+                                Text("SẴN SÀNG • CHƯA BẮT ĐẦU QUAY")
+                                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                                    .foregroundColor(.yellow)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 4)
+                            .background(Color.black.opacity(0.85))
+                            .clipShape(Capsule())
+                            
+                            HStack(spacing: 12) {
+                                if let onHome = onExitToHome {
+                                    Button(action: onHome) {
+                                        HStack(spacing: 5) {
+                                            Image(systemName: "house.fill")
+                                            Text("Trang Chủ")
+                                        }
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.85))
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 9)
+                                        .background(Color.white.opacity(0.18))
+                                        .clipShape(Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                
+                                Button(action: {
+                                    withAnimation(.spring()) {
+                                        isMatchRecording = true
+                                        cvCoordinator.isRecordingActive = true
+                                        rallyEngine.resetMatch()
+                                    }
+                                }) {
+                                    HStack(spacing: 8) {
+                                        Circle()
+                                            .fill(Color.red)
+                                            .frame(width: 12, height: 12)
+                                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                                        Text("BẮT ĐẦU QUAY & TÍNH ĐIỂM")
+                                            .font(.system(size: 13, weight: .black))
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        LinearGradient(
+                                            colors: [Color.red, Color(red: 0.85, green: 0.1, blue: 0.1)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .clipShape(Capsule())
+                                    .shadow(color: .red.opacity(0.6), radius: 10)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(14)
+                        .background(.ultraThinMaterial.opacity(0.92))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.5), radius: 12)
+                        .zIndex(30)
+                    }
                 }
                 
-                // 5. Modal VAR Instant Replay (Overlay)
+                // 6. Modal VAR Instant Replay (Overlay)
                 if showVARReviewModal, let varEvent = selectedVAREvent {
                     InstantReplayVARView(
                         event: varEvent,
@@ -187,6 +267,18 @@ public struct LiveMatchContainerView: View {
         .persistentSystemOverlays(.hidden)
         .onAppear {
             cameraManager.setVideoOrientation(.landscapeRight)
+            isMatchRecording = false
+            cvCoordinator.isRecordingActive = false
+        }
+        .alert("Kết Thúc Trận Đấu?", isPresented: $showEndMatchConfirmAlert) {
+            Button("Tiếp tục quay", role: .cancel) {}
+            Button("Kết thúc & Về Trang Chủ", role: .destructive) {
+                isMatchRecording = false
+                cvCoordinator.isRecordingActive = false
+                onExitToHome?()
+            }
+        } message: {
+            Text("Trận đấu đang được ghi hình. Bạn có chắc chắn muốn dừng quay và trở về trang chủ?")
         }
         .onReceive(cameraManager.framePublisher) { frame in
             self.currentFrameBuffer = frame.pixelBuffer
@@ -335,7 +427,7 @@ public struct LiveMatchContainerView: View {
     }
     
     private func applyCalibration(normalizedCorners: [CGPoint], viewSize: CGSize) {
-        guard normalizedCorners.count == 4 else { return }
+        guard normalizedCorners.count >= 4 else { return }
         let pixelCorners = normalizedCorners.map {
             CGPoint(x: $0.x * viewSize.width, y: $0.y * viewSize.height)
         }
@@ -417,57 +509,119 @@ private struct CalibrationGuideOverlay: View {
     var onReset: (() -> Void)? = nil
     var onDone: () -> Void
     
-    private let cornerNames = [
-        "1. Góc Đáy Gần Trái",
-        "2. Góc Đáy Gần Phải",
-        "3. Góc Đáy Xa Phải",
-        "4. Góc Đáy Xa Trái"
+    private let landmarkNames = [
+        "1. Đáy Gần Trái",
+        "2. Đáy Gần Phải",
+        "3. Đáy Xa Phải",
+        "4. Đáy Xa Trái",
+        "5. Bếp Gần Trái",
+        "6. Bếp Gần Phải",
+        "7. Bếp Xa Phải",
+        "8. Bếp Xa Trái",
+        "9. Cột Lưới Trái",
+        "10. Cột Lưới Phải"
     ]
     
     var body: some View {
         ZStack {
-            // Đường kết nối đa giác 4 chốt góc sân (ROI)
-            if corners.count == 4 {
-                Canvas { context, size in
-                    var path = Path()
-                    let pts = corners.map { CGPoint(x: $0.x * size.width, y: $0.y * size.height) }
-                    path.move(to: pts[0])
-                    path.addLine(to: pts[1])
-                    path.addLine(to: pts[2])
-                    path.addLine(to: pts[3])
-                    path.closeSubpath()
+            // Đường kết nối đa giác các chốt mốc sân (ROI)
+            Canvas { context, size in
+                let pts = corners.map { CGPoint(x: $0.x * size.width, y: $0.y * size.height) }
+                
+                // 1. Viền sân ngoài
+                if pts.count >= 4 {
+                    var outerPath = Path()
+                    outerPath.move(to: pts[0])
+                    outerPath.addLine(to: pts[1])
+                    outerPath.addLine(to: pts[2])
+                    outerPath.addLine(to: pts[3])
+                    outerPath.closeSubpath()
                     
-                    context.fill(path, with: .color(Color.cyan.opacity(0.18)))
-                    context.stroke(path, with: .color(Color.cyan), lineWidth: 2.2)
+                    context.fill(outerPath, with: .color(Color.blue.opacity(0.12)))
+                    context.stroke(outerPath, with: .color(Color.cyan), lineWidth: 2.2)
+                }
+                
+                // 2. Vùng Bếp (Kitchen 4 -> 5 -> 6 -> 7)
+                if pts.count >= 8 {
+                    var kitchenPath = Path()
+                    kitchenPath.move(to: pts[4])
+                    kitchenPath.addLine(to: pts[5])
+                    kitchenPath.addLine(to: pts[6])
+                    kitchenPath.addLine(to: pts[7])
+                    kitchenPath.closeSubpath()
+                    
+                    context.fill(kitchenPath, with: .color(Color.orange.opacity(0.18)))
+                    
+                    // Vạch bếp gần
+                    var nearKitchenLine = Path()
+                    nearKitchenLine.move(to: pts[4])
+                    nearKitchenLine.addLine(to: pts[5])
+                    context.stroke(nearKitchenLine, with: .color(Color.orange), lineWidth: 2.2)
+                    
+                    // Vạch bếp xa
+                    var farKitchenLine = Path()
+                    farKitchenLine.move(to: pts[7])
+                    farKitchenLine.addLine(to: pts[6])
+                    context.stroke(farKitchenLine, with: .color(Color.orange), lineWidth: 2.2)
+                }
+                
+                // 3. Đường Lưới (Net 8 -> 9)
+                if pts.count >= 10 {
+                    var netPath = Path()
+                    netPath.move(to: pts[8])
+                    netPath.addLine(to: pts[9])
+                    context.stroke(
+                        netPath,
+                        with: .color(Color.white),
+                        style: StrokeStyle(lineWidth: 2.2, dash: [6, 4])
+                    )
+                }
+                
+                // 4. Centerline
+                if pts.count >= 8 {
+                    let midNearBL = CGPoint(x: (pts[0].x + pts[1].x) / 2.0, y: (pts[0].y + pts[1].y) / 2.0)
+                    let midNearNVZ = CGPoint(x: (pts[4].x + pts[5].x) / 2.0, y: (pts[4].y + pts[5].y) / 2.0)
+                    var nearCenterPath = Path()
+                    nearCenterPath.move(to: midNearBL)
+                    nearCenterPath.addLine(to: midNearNVZ)
+                    context.stroke(nearCenterPath, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
+                    
+                    let midFarBL = CGPoint(x: (pts[3].x + pts[2].x) / 2.0, y: (pts[3].y + pts[2].y) / 2.0)
+                    let midFarNVZ = CGPoint(x: (pts[7].x + pts[6].x) / 2.0, y: (pts[7].y + pts[6].y) / 2.0)
+                    var farCenterPath = Path()
+                    farCenterPath.move(to: midFarBL)
+                    farCenterPath.addLine(to: midFarNVZ)
+                    context.stroke(farCenterPath, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
                 }
             }
             
-            // 4 Chốt ghim góc có thể kéo thả
+            // 10 Chốt ghim có thể kéo thả
             ForEach(0..<corners.count, id: \.self) { i in
                 let corner = corners[i]
                 let px = corner.x * viewSize.width
                 let py = corner.y * viewSize.height
                 let isSelected = (selectedCornerIndex == i)
+                let landmarkColor = colorForIndex(i)
                 
                 VStack(spacing: 2) {
                     Circle()
-                        .fill(isSelected ? Color.yellow : Color.cyan)
-                        .frame(width: 24, height: 24)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 2.2))
-                        .shadow(color: isSelected ? .yellow : .cyan, radius: 8)
+                        .fill(isSelected ? Color.white : landmarkColor)
+                        .frame(width: isSelected ? 24 : 20, height: isSelected ? 24 : 20)
+                        .overlay(Circle().stroke(Color.black.opacity(0.8), lineWidth: 2.0))
+                        .shadow(color: landmarkColor.opacity(0.9), radius: 6)
                     
-                    Text(cornerNames[min(i, cornerNames.count - 1)])
-                        .font(.system(size: 9.5, weight: .black))
+                    Text(landmarkNames[min(i, landmarkNames.count - 1)])
+                        .font(.system(size: 8.5, weight: .black))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 7)
+                        .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.black.opacity(0.8))
+                        .background(Color.black.opacity(0.85))
                         .clipShape(Capsule())
                 }
                 .position(x: px, y: py)
             }
             
-            // Thanh hướng dẫn và nút XÁC NHẬN duy nhất phía trên (Không bị bất kỳ UI nào che khuất)
+            // Thanh hướng dẫn và nút XÁC NHẬN duy nhất phía trên
             VStack {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -475,12 +629,12 @@ private struct CalibrationGuideOverlay: View {
                             Image(systemName: "camera.metering.matrix")
                                 .foregroundColor(.yellow)
                                 .font(.system(size: 13, weight: .bold))
-                            Text("CHẾ ĐỘ CĂN CHỈNH 4 GÓC SÂN (CALIBRATION)")
-                                .font(.system(size: 12, weight: .heavy))
+                            Text("CĂN CHỈNH 10 ĐIỂM SÂN (4 GÓC • 4 BẾP • 2 LƯỚI)")
+                                .font(.system(size: 11, weight: .heavy))
                                 .foregroundColor(.yellow)
                         }
-                        Text("Kéo 4 chốt ghim trùng với 4 góc ngoài của sân thi đấu")
-                            .font(.system(size: 10, weight: .medium))
+                        Text("Kéo các chốt: Vàng (4 Góc), Cam (4 Bếp), Xanh ngọc (2 Lưới)")
+                            .font(.system(size: 9.5, weight: .medium))
                             .foregroundColor(.white.opacity(0.85))
                     }
                     
@@ -527,6 +681,19 @@ private struct CalibrationGuideOverlay: View {
                 
                 Spacer()
             }
+        }
+    }
+    
+    private func colorForIndex(_ index: Int) -> Color {
+        switch index {
+        case 0...3:
+            return Color.yellow  // 4 Góc sân
+        case 4...7:
+            return Color.orange  // 4 Điểm bếp
+        case 8...9:
+            return Color.cyan    // 2 Điểm cột lưới
+        default:
+            return Color.white
         }
     }
 }

@@ -3,7 +3,11 @@ name: Build PickleVision iOS IPA
 on:
   push:
     branches: [ "main", "master" ]
+    tags: [ "v*" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-ipa:
@@ -64,8 +68,8 @@ jobs:
           echo "Found app at: $APP_PATH"
           
           echo "=== 5. Verifying & injecting privacy keys into Info.plist ==="
-          plutil -replace CFBundleShortVersionString -string "1.2.0" "$APP_PATH/Info.plist"
-          plutil -replace CFBundleVersion -string "2" "$APP_PATH/Info.plist"
+          plutil -replace CFBundleShortVersionString -string "1.0.1" "$APP_PATH/Info.plist"
+          plutil -replace CFBundleVersion -string "3" "$APP_PATH/Info.plist"
           plutil -replace NSCameraUsageDescription -string "PickleVision cần quyền truy cập Camera để phân tích đường bóng và vận động viên Pickleball theo thời gian thực (60/120fps)." "$APP_PATH/Info.plist"
           plutil -replace NSMicrophoneUsageDescription -string "PickleVision cần quyền Micro để ghi âm trận đấu khi xuất video highlight." "$APP_PATH/Info.plist"
           plutil -replace NSPhotoLibraryAddUsageDescription -string "PickleVision cần quyền lưu video phân tích vào Thư viện ảnh." "$APP_PATH/Info.plist"
@@ -81,7 +85,7 @@ jobs:
           cp -R "$APP_PATH" build/Payload/
           cd build
           zip -r PickleVision.ipa Payload
-          cp PickleVision.ipa PickleVision_v1.2.ipa
+          cp PickleVision.ipa PickleVision_v1.0.1.ipa
           echo "IPA packaging completed successfully."
 
       - name: Upload Build Log (Always)
@@ -99,3 +103,22 @@ jobs:
           name: PickleVision-iOS-IPA
           path: "**/build/*.ipa"
           if-no-files-found: error
+
+      - name: Create or Update GitHub Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.1
+          name: "PickleVision v1.0.1"
+          body: |
+            ## PickleVision v1.0.1 Release
+            - ✅ Căn chỉnh ROI sân 10 điểm hình học (4 góc ngoài sân + 4 điểm bếp + 2 điểm cột lưới)
+            - ✅ Độ chính xác Homography DLT SVD RMSE < 0.006m
+            - ✅ Màn hình Home Onboarding: Bắt đầu, Thông tin, Thoát, nhãn version v1.0.1
+            - ✅ Cấu hình trận đấu (Match Setup): Tên 4 cầu thủ & Người giao bóng đầu tiên
+            - ✅ Chế độ vào trận Chưa Quay Liền với nút BẮT ĐẦU QUAY & TÍNH ĐIỂM (REC)
+          files: |
+            **/build/PickleVision_v1.0.1.ipa
+            **/build/PickleVision.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
