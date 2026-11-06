@@ -43,7 +43,7 @@ public struct HomeView: View {
                 // Logo & Tiêu đề chính
                 VStack(spacing: 8) {
                     HStack(spacing: 10) {
-                        Image(systemName: "figure.pickleball")
+                        Image(systemName: "figure.tennis")
                             .font(.system(size: 38, weight: .bold))
                             .foregroundColor(.yellow)
                             .shadow(color: .yellow.opacity(0.8), radius: 12)
@@ -173,8 +173,7 @@ public struct HomeView: View {
                 if let exitAction = onExitTapped {
                     exitAction()
                 } else {
-                    // Trên iOS, trở về màn hình Home của thiết bị
-                    UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
+                    exit(0)
                 }
             }
         } message: {
