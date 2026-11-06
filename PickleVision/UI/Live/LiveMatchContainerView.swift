@@ -69,9 +69,9 @@ public struct LiveMatchContainerView: View {
                 .ignoresSafeArea()
                 
                 if isCalibrating {
-                    // CHẾ ĐỘ HIỆU CHUẨN: Ẩn toàn bộ các thanh bar, CHỈ HIỂN THỊ ROI 4 GÓC VÀ NÚT XÁC NHẬN
+                    // CHẾ ĐỘ HIỆU CHUẨN: Ẩn toàn bộ các thanh bar, CHỈ HIỂN THỊ ROI VÀ NÚT XÁC NHẬN
                     CalibrationGuideOverlay(
-                        corners: calibrationCorners,
+                        corners: $calibrationCorners,
                         selectedCornerIndex: {
                             if case .courtCalibration(let idx) = interactionMode { return idx }
                             return nil
@@ -503,11 +503,13 @@ private struct VectorHUDOverlayView: View {
 // MARK: - Calibration Guide Overlay
 
 private struct CalibrationGuideOverlay: View {
-    let corners: [CGPoint]
+    @Binding var corners: [CGPoint]
     let selectedCornerIndex: Int?
     let viewSize: CGSize
     var onReset: (() -> Void)? = nil
     var onDone: () -> Void
+    
+    @State private var activeDraggingIndex: Int? = nil
     
     private let landmarkNames = [
         "1. Đáy Gần Trái",
@@ -524,11 +526,11 @@ private struct CalibrationGuideOverlay: View {
     
     var body: some View {
         ZStack {
-            // Đường kết nối đa giác các chốt mốc sân (ROI)
+            // 1. Canvas đồ họa sân (allowsHitTesting: false để không chặn touch)
             Canvas { context, size in
                 let pts = corners.map { CGPoint(x: $0.x * size.width, y: $0.y * size.height) }
                 
-                // 1. Viền sân ngoài
+                // Viền sân ngoài
                 if pts.count >= 4 {
                     var outerPath = Path()
                     outerPath.move(to: pts[0])
@@ -541,7 +543,7 @@ private struct CalibrationGuideOverlay: View {
                     context.stroke(outerPath, with: .color(Color.cyan), lineWidth: 2.2)
                 }
                 
-                // 2. Vùng Bếp (Kitchen 4 -> 5 -> 6 -> 7)
+                // Vùng Bếp (Kitchen 4 -> 5 -> 6 -> 7)
                 if pts.count >= 8 {
                     var kitchenPath = Path()
                     kitchenPath.move(to: pts[4])
@@ -565,7 +567,7 @@ private struct CalibrationGuideOverlay: View {
                     context.stroke(farKitchenLine, with: .color(Color.orange), lineWidth: 2.2)
                 }
                 
-                // 3. Đường Lưới (Net 8 -> 9)
+                // Đường Lưới (Net 8 -> 9)
                 if pts.count >= 10 {
                     var netPath = Path()
                     netPath.move(to: pts[8])
@@ -577,7 +579,7 @@ private struct CalibrationGuideOverlay: View {
                     )
                 }
                 
-                // 4. Centerline
+                // Centerlines
                 if pts.count >= 8 {
                     let midNearBL = CGPoint(x: (pts[0].x + pts[1].x) / 2.0, y: (pts[0].y + pts[1].y) / 2.0)
                     let midNearNVZ = CGPoint(x: (pts[4].x + pts[5].x) / 2.0, y: (pts[4].y + pts[5].y) / 2.0)
@@ -594,42 +596,101 @@ private struct CalibrationGuideOverlay: View {
                     context.stroke(farCenterPath, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
                 }
             }
+            .allowsHitTesting(false)
             
-            // 10 Chốt ghim có thể kéo thả
+            // 2. Vùng cảm ứng nền: bắt kéo chốt gần nhất
+            Color.clear
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 4, coordinateSpace: .named("CourtBoundsAreaLive"))
+                        .onChanged { value in
+                            guard viewSize.width > 0 && viewSize.height > 0 else { return }
+                            let touchNorm = CGPoint(
+                                x: value.location.x / viewSize.width,
+                                y: value.location.y / viewSize.height
+                            )
+                            
+                            if activeDraggingIndex == nil {
+                                var bestIdx: Int? = nil
+                                var minDist: CGFloat = 0.12
+                                for i in 0..<corners.count {
+                                    let d = hypot(corners[i].x - touchNorm.x, corners[i].y - touchNorm.y)
+                                    if d < minDist {
+                                        minDist = d
+                                        bestIdx = i
+                                    }
+                                }
+                                activeDraggingIndex = bestIdx
+                            }
+                            
+                            if let idx = activeDraggingIndex, idx < corners.count {
+                                corners[idx] = CGPoint(
+                                    x: min(max(touchNorm.x, 0.0), 1.0),
+                                    y: min(max(touchNorm.y, 0.0), 1.0)
+                                )
+                            }
+                        }
+                        .onEnded { _ in
+                            activeDraggingIndex = nil
+                        }
+                )
+            
+            // 3. 10 Chốt ghim kéo thả trực tiếp bằng tay
             ForEach(0..<corners.count, id: \.self) { i in
                 let corner = corners[i]
                 let px = corner.x * viewSize.width
                 let py = corner.y * viewSize.height
-                let isSelected = (selectedCornerIndex == i)
+                let isDragging = (activeDraggingIndex == i)
                 let landmarkColor = colorForIndex(i)
                 
-                VStack(spacing: 2) {
+                VStack(spacing: 3) {
                     Circle()
-                        .fill(isSelected ? Color.white : landmarkColor)
-                        .frame(width: isSelected ? 24 : 20, height: isSelected ? 24 : 20)
-                        .overlay(Circle().stroke(Color.black.opacity(0.8), lineWidth: 2.0))
-                        .shadow(color: landmarkColor.opacity(0.9), radius: 6)
+                        .fill(isDragging ? Color.white : landmarkColor)
+                        .frame(width: isDragging ? 26 : 20, height: isDragging ? 26 : 20)
+                        .overlay(
+                            Circle().stroke(isDragging ? Color.yellow : Color.white, lineWidth: isDragging ? 3.0 : 2.0)
+                        )
+                        .shadow(color: (isDragging ? Color.yellow : landmarkColor).opacity(0.95), radius: isDragging ? 10 : 6)
+                        .scaleEffect(isDragging ? 1.25 : 1.0)
                     
                     Text(landmarkNames[min(i, landmarkNames.count - 1)])
                         .font(.system(size: 8.5, weight: .black))
-                        .foregroundColor(.white)
+                        .foregroundColor(isDragging ? .yellow : .white)
                         .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 2.5)
                         .background(Color.black.opacity(0.85))
                         .clipShape(Capsule())
+                        .overlay(
+                            Capsule().stroke(isDragging ? Color.yellow : Color.white.opacity(0.3), lineWidth: 1)
+                        )
                 }
+                .frame(width: 56, height: 56)
+                .contentShape(Rectangle())
                 .position(x: px, y: py)
+                .gesture(
+                    DragGesture(minimumDistance: 0, coordinateSpace: .named("CourtBoundsAreaLive"))
+                        .onChanged { value in
+                            activeDraggingIndex = i
+                            guard viewSize.width > 0 && viewSize.height > 0 else { return }
+                            let newX = min(max(value.location.x / viewSize.width, 0.0), 1.0)
+                            let newY = min(max(value.location.y / viewSize.height, 0.0), 1.0)
+                            corners[i] = CGPoint(x: newX, y: newY)
+                        }
+                        .onEnded { _ in
+                            activeDraggingIndex = nil
+                        }
+                )
             }
             
-            // Thanh hướng dẫn và nút XÁC NHẬN duy nhất phía trên
+            // 4. Thanh hướng dẫn và nút XÁC NHẬN duy nhất phía trên
             VStack {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
-                            Image(systemName: "camera.metering.matrix")
+                            Image(systemName: "hand.draw.fill")
                                 .foregroundColor(.yellow)
                                 .font(.system(size: 13, weight: .bold))
-                            Text("CĂN CHỈNH 10 ĐIỂM SÂN (4 GÓC • 4 BẾP • 2 LƯỚI)")
+                            Text("CHẠM & KÉO 10 ĐIỂM SÂN (ROI)")
                                 .font(.system(size: 11, weight: .heavy))
                                 .foregroundColor(.yellow)
                         }
@@ -674,14 +735,19 @@ private struct CalibrationGuideOverlay: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(.ultraThinMaterial.opacity(0.95))
+                .background(Color.black.opacity(0.75))
                 .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                )
                 .padding(.horizontal, 14)
                 .padding(.top, 10)
                 
                 Spacer()
             }
         }
+        .coordinateSpace(name: "CourtBoundsAreaLive")
     }
     
     private func colorForIndex(_ index: Int) -> Color {

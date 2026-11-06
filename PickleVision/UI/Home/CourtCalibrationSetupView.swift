@@ -4,7 +4,7 @@
 //
 //  Created by Frontend Coder on 2026-11-06.
 //  Step 2: Fullscreen Clean Court ROI Calibration Setup Screen without UI Bars.
-//  Supports 10 Calibration Landmark Points: 4 Outer Corners + 4 Kitchen Points + 2 Net Points.
+//  Direct Touch & Drag Gestures for 10 Landmark Points (4 Corners + 4 Kitchen + 2 Net).
 //
 
 import SwiftUI
@@ -38,6 +38,7 @@ public struct CourtCalibrationSetupView: View {
     
     @State private var calibrationCorners: [CGPoint]
     @State private var interactionMode: CameraPreviewInteractionMode = .courtCalibration(selectedCornerIndex: 0)
+    @State private var activeDraggingIndex: Int? = nil
     
     public init(
         currentFrameBuffer: Binding<CVPixelBuffer?>,
@@ -66,11 +67,13 @@ public struct CourtCalibrationSetupView: View {
                 )
                 .ignoresSafeArea()
                 
-                // 2. Lớp Đa Giác ROI 10 Điểm Sân (4 Góc + 4 Bếp + 2 Lưới) & Chốt Kéo Thả
+                // 2. Lớp Đa Giác ROI 10 Điểm Sân & Chốt Kéo Thả Trực Tiếp Bằng Tay
                 CalibrationROIOverlay(
-                    corners: calibrationCorners,
-                    viewSize: geometry.size
+                    corners: $calibrationCorners,
+                    viewSize: geometry.size,
+                    activeDraggingIndex: $activeDraggingIndex
                 )
+                .coordinateSpace(name: "CourtCalibrationSetupArea")
                 
                 // 3. Thanh Tiêu Đề Điều Hướng Nằm Gọn Ở Mép Trên (Không che khuất sân)
                 VStack {
@@ -94,14 +97,14 @@ public struct CourtCalibrationSetupView: View {
                         // Hướng dẫn thao tác
                         VStack(alignment: .leading, spacing: 1) {
                             HStack(spacing: 6) {
-                                Image(systemName: "camera.metering.matrix")
+                                Image(systemName: "hand.draw.fill")
                                     .foregroundColor(.yellow)
                                     .font(.system(size: 12, weight: .bold))
-                                Text("CĂN CHỈNH 10 ĐIỂM SÂN (4 GÓC • 4 BẾP • 2 LƯỚI)")
+                                Text("CHẠM & KÉO THẢ 10 ĐIỂM SÂN BẰNG TAY")
                                     .font(.system(size: 10.5, weight: .heavy, design: .monospaced))
                                     .foregroundColor(.yellow)
                             }
-                            Text("Chạm & kéo các chốt: Vàng (4 Góc), Cam (4 Bếp), Xanh ngọc (2 Lưới)")
+                            Text("Chạm vào từng chốt để di chuyển: Vàng (4 Góc), Cam (4 Bếp), Xanh ngọc (2 Lưới)")
                                 .font(.system(size: 9.5, weight: .medium))
                                 .foregroundColor(.white.opacity(0.9))
                         }
@@ -151,8 +154,12 @@ public struct CourtCalibrationSetupView: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(.ultraThinMaterial.opacity(0.95))
+                    .background(Color.black.opacity(0.75))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    )
                     .padding(.horizontal, 14)
                     .padding(.top, 10)
                     
@@ -167,11 +174,12 @@ public struct CourtCalibrationSetupView: View {
     }
 }
 
-// MARK: - Subview: Lớp Vẽ Đa Giác ROI 10 Điểm & Chốt Kéo Thả
+// MARK: - Subview: Lớp Vẽ Đa Giác ROI 10 Điểm & Chốt Kéo Thả Trực Tiếp
 
 private struct CalibrationROIOverlay: View {
-    let corners: [CGPoint]
+    @Binding var corners: [CGPoint]
     let viewSize: CGSize
+    @Binding var activeDraggingIndex: Int?
     
     private let landmarkNames = [
         "1. Đáy Gần Trái",
@@ -188,10 +196,11 @@ private struct CalibrationROIOverlay: View {
     
     var body: some View {
         ZStack {
+            // 1. LỚP CANVAS ĐỒ HỌA SÂN (Cho phép touch xuyên qua bằng allowsHitTesting: false)
             Canvas { context, size in
                 let pts = corners.map { CGPoint(x: $0.x * size.width, y: $0.y * size.height) }
                 
-                // 1. Vẽ Viền Sân Ngoài (Corners 0 -> 1 -> 2 -> 3 -> 0)
+                // Viền sân ngoài (Corners 0 -> 1 -> 2 -> 3 -> 0)
                 if pts.count >= 4 {
                     var outerPath = Path()
                     outerPath.move(to: pts[0])
@@ -204,7 +213,7 @@ private struct CalibrationROIOverlay: View {
                     context.stroke(outerPath, with: .color(Color.cyan), lineWidth: 2.5)
                 }
                 
-                // 2. Vẽ Vùng Bếp Non-Volley Zone (Kitchen: 4 -> 5 -> 6 -> 7)
+                // Vùng Bếp Non-Volley Zone (Kitchen: 4 -> 5 -> 6 -> 7)
                 if pts.count >= 8 {
                     var kitchenPath = Path()
                     kitchenPath.move(to: pts[4])
@@ -228,7 +237,7 @@ private struct CalibrationROIOverlay: View {
                     context.stroke(farKitchenLine, with: .color(Color.orange), lineWidth: 2.4)
                 }
                 
-                // 3. Vẽ Đường Mép Lưới (Net: 8 -> 9)
+                // Đường Mép Lưới (Net: 8 -> 9)
                 if pts.count >= 10 {
                     var netPath = Path()
                     netPath.move(to: pts[8])
@@ -240,9 +249,8 @@ private struct CalibrationROIOverlay: View {
                     )
                 }
                 
-                // 4. Vẽ Đường Phân Chia Ô Phát Bóng (Centerlines)
+                // Đường Phân Chia Ô Phát Bóng (Centerlines)
                 if pts.count >= 8 {
-                    // Centerline sân gần: Trung điểm (0, 1) đến trung điểm (4, 5)
                     let midNearBL = CGPoint(x: (pts[0].x + pts[1].x) / 2.0, y: (pts[0].y + pts[1].y) / 2.0)
                     let midNearNVZ = CGPoint(x: (pts[4].x + pts[5].x) / 2.0, y: (pts[4].y + pts[5].y) / 2.0)
                     var nearCenterPath = Path()
@@ -250,7 +258,6 @@ private struct CalibrationROIOverlay: View {
                     nearCenterPath.addLine(to: midNearNVZ)
                     context.stroke(nearCenterPath, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
                     
-                    // Centerline sân xa: Trung điểm (3, 2) đến trung điểm (7, 6)
                     let midFarBL = CGPoint(x: (pts[3].x + pts[2].x) / 2.0, y: (pts[3].y + pts[2].y) / 2.0)
                     let midFarNVZ = CGPoint(x: (pts[7].x + pts[6].x) / 2.0, y: (pts[7].y + pts[6].y) / 2.0)
                     var farCenterPath = Path()
@@ -259,30 +266,93 @@ private struct CalibrationROIOverlay: View {
                     context.stroke(farCenterPath, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
                 }
             }
+            .allowsHitTesting(false) // QUAN TRỌNG: Không chặn sự kiện chạm của các chốt ghim!
             
-            // 10 Chốt ghim kéo thả với màu sắc phân loại trực quan
+            // 2. VÙNG CẢM ỨNG NỀN TỔNG QUÁT: Chạm & Kéo chốt gần nhất
+            Color.clear
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 4, coordinateSpace: .named("CourtCalibrationSetupArea"))
+                        .onChanged { value in
+                            guard viewSize.width > 0 && viewSize.height > 0 else { return }
+                            let touchNorm = CGPoint(
+                                x: value.location.x / viewSize.width,
+                                y: value.location.y / viewSize.height
+                            )
+                            
+                            // Nếu chưa xác định chốt kéo, tìm chốt gần nhất trong bán kính 65pt
+                            if activeDraggingIndex == nil {
+                                var bestIdx: Int? = nil
+                                var minDist: CGFloat = 0.12 // ~12% màn hình
+                                for i in 0..<corners.count {
+                                    let d = hypot(corners[i].x - touchNorm.x, corners[i].y - touchNorm.y)
+                                    if d < minDist {
+                                        minDist = d
+                                        bestIdx = i
+                                    }
+                                }
+                                activeDraggingIndex = bestIdx
+                            }
+                            
+                            if let idx = activeDraggingIndex, idx < corners.count {
+                                corners[idx] = CGPoint(
+                                    x: min(max(touchNorm.x, 0.0), 1.0),
+                                    y: min(max(touchNorm.y, 0.0), 1.0)
+                                )
+                            }
+                        }
+                        .onEnded { _ in
+                            activeDraggingIndex = nil
+                        }
+                )
+            
+            // 3. 10 CHỐT GHIM CÓ THỂ KÉO THẢ TRỰC TIẾP (DIRECT DRAG GESTURE)
             ForEach(0..<corners.count, id: \.self) { i in
                 let corner = corners[i]
                 let px = corner.x * viewSize.width
                 let py = corner.y * viewSize.height
+                let isDragging = (activeDraggingIndex == i)
                 let color = colorForLandmark(i)
                 
-                VStack(spacing: 2) {
+                VStack(spacing: 3) {
                     Circle()
-                        .fill(color)
-                        .frame(width: 20, height: 20)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 2.0))
-                        .shadow(color: color.opacity(0.9), radius: 6)
+                        .fill(isDragging ? Color.white : color)
+                        .frame(width: isDragging ? 26 : 20, height: isDragging ? 26 : 20)
+                        .overlay(
+                            Circle()
+                                .stroke(isDragging ? Color.yellow : Color.white, lineWidth: isDragging ? 3.0 : 2.0)
+                        )
+                        .shadow(color: (isDragging ? Color.yellow : color).opacity(0.95), radius: isDragging ? 10 : 6)
+                        .scaleEffect(isDragging ? 1.25 : 1.0)
                     
                     Text(landmarkNames[min(i, landmarkNames.count - 1)])
                         .font(.system(size: 8.5, weight: .black))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
+                        .foregroundColor(isDragging ? .yellow : .white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2.5)
                         .background(Color.black.opacity(0.85))
                         .clipShape(Capsule())
+                        .overlay(
+                            Capsule().stroke(isDragging ? Color.yellow : Color.white.opacity(0.3), lineWidth: 1)
+                        )
                 }
+                // Vùng chạm rộng 56x56 pt để ngón tay chạm cực nhạy
+                .frame(width: 56, height: 56)
+                .contentShape(Rectangle())
                 .position(x: px, y: py)
+                .gesture(
+                    DragGesture(minimumDistance: 0, coordinateSpace: .named("CourtCalibrationSetupArea"))
+                        .onChanged { value in
+                            activeDraggingIndex = i
+                            guard viewSize.width > 0 && viewSize.height > 0 else { return }
+                            let newX = min(max(value.location.x / viewSize.width, 0.0), 1.0)
+                            let newY = min(max(value.location.y / viewSize.height, 0.0), 1.0)
+                            corners[i] = CGPoint(x: newX, y: newY)
+                        }
+                        .onEnded { _ in
+                            activeDraggingIndex = nil
+                        }
+                )
             }
         }
     }
