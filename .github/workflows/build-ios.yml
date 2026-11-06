@@ -17,7 +17,6 @@ jobs:
 
       - name: Generate Xcode Project & Build IPA
         run: |
-          # Di chuyển vào thư mục chứa project.yml nếu cần
           if [ -d "PickleVision" ] && [ -f "PickleVision/project.yml" ]; then
             cd PickleVision
           fi
@@ -30,16 +29,23 @@ jobs:
             -project PickleVision.xcodeproj \
             -scheme PickleVision \
             -configuration Release \
+            -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            -archivePath build/PickleVision.xcarchive \
+            -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            archive
+            build
             
           echo "=== 3. Packaging into PickleVision.ipa ==="
           mkdir -p build/Payload
-          cp -R build/PickleVision.xcarchive/Products/Applications/PickleVision.app build/Payload/
+          APP_PATH=$(find build/DerivedData -name "PickleVision.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: PickleVision.app not found in build directory!"
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+          cp -R "$APP_PATH" build/Payload/
           cd build
           zip -r PickleVision.ipa Payload
           echo "IPA packaging completed successfully."
