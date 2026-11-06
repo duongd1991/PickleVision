@@ -144,6 +144,15 @@ public struct TopStatusBarView: View {
             
             // 6. Trạng thái trực tiếp của trận đấu
             LiveRallyStatePill(state: rallyState)
+            
+            // Badge phiên bản v1.2
+            Text("v1.2")
+                .font(.system(size: 8, weight: .heavy))
+                .foregroundColor(.yellow)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2.5)
+                .background(Color.yellow.opacity(0.18))
+                .clipShape(Capsule())
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

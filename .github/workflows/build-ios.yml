@@ -64,6 +64,8 @@ jobs:
           echo "Found app at: $APP_PATH"
           
           echo "=== 5. Verifying & injecting privacy keys into Info.plist ==="
+          plutil -replace CFBundleShortVersionString -string "1.2.0" "$APP_PATH/Info.plist"
+          plutil -replace CFBundleVersion -string "2" "$APP_PATH/Info.plist"
           plutil -replace NSCameraUsageDescription -string "PickleVision cần quyền truy cập Camera để phân tích đường bóng và vận động viên Pickleball theo thời gian thực (60/120fps)." "$APP_PATH/Info.plist"
           plutil -replace NSMicrophoneUsageDescription -string "PickleVision cần quyền Micro để ghi âm trận đấu khi xuất video highlight." "$APP_PATH/Info.plist"
           plutil -replace NSPhotoLibraryAddUsageDescription -string "PickleVision cần quyền lưu video phân tích vào Thư viện ảnh." "$APP_PATH/Info.plist"
@@ -79,6 +81,7 @@ jobs:
           cp -R "$APP_PATH" build/Payload/
           cd build
           zip -r PickleVision.ipa Payload
+          cp PickleVision.ipa PickleVision_v1.2.ipa
           echo "IPA packaging completed successfully."
 
       - name: Upload Build Log (Always)
@@ -94,5 +97,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: PickleVision-iOS-IPA
-          path: "**/build/PickleVision.ipa"
+          path: "**/build/*.ipa"
           if-no-files-found: error
